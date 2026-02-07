@@ -1,0 +1,663 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="bg-indigo-900 py-6 border-b border-indigo-800 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center">
+        <a href="{% url 'core:dashboard' %}" class="flex items-center gap-2 text-indigo-200 hover:text-white transition font-medium">
+            <i class="fa-solid fa-arrow-left rtl:rotate-180"></i>
+            {% if request.session.lang == 'ar' %}العودة للوحة التحكم{% else %}Back to Dashboard{% endif %}
+        </a>
+        <h1 class="text-xl font-bold text-white flex items-center gap-2">
+            <i class="fa-solid {{ tool.icon_name|default:'fa-wand-magic-sparkles' }}"></i>
+            {% if request.session.lang == 'ar' %}{{ tool.name_ar }}{% else %}{{ tool.name_en }}{% endif %}
+        </h1>
+        <div class="w-20"></div>
+    </div>
+</div>
+
+<script src="//unpkg.com/mathlive"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="min-h-screen bg-gray-50 flex flex-col font-sans">
+    
+    <!-- Main Content -->
+    <div class="flex-1 max-w-4xl mx-auto w-full p-4 sm:p-8">
+        
+        <!-- Input Section -->
+        <div class="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden mb-8">
+            <!-- Tabs -->
+            <div class="flex flex-wrap border-b border-indigo-100 bg-indigo-50/50">
+                <button onclick="setMode('solve')" id="tab-solve" class="flex-1 py-4 text-center font-bold text-indigo-900 border-b-2 border-indigo-600 bg-white transition min-w-[120px]">
+                    {% if request.session.lang == 'ar' %}حل المعادلات{% else %}Solve Equation{% endif %}
+                </button>
+                <button onclick="setMode('quadratic')" id="tab-quadratic" class="flex-1 py-4 text-center font-bold text-gray-500 hover:text-indigo-700 hover:bg-white/50 transition min-w-[120px]">
+                    {% if request.session.lang == 'ar' %}المعادلة التربيعية{% else %}Quadratic Solver{% endif %}
+                </button>
+                <button onclick="setMode('factorize')" id="tab-factorize" class="flex-1 py-4 text-center font-bold text-gray-500 hover:text-indigo-700 hover:bg-white/50 transition min-w-[120px]">
+                    {% if request.session.lang == 'ar' %}التحليل{% else %}Factorization{% endif %}
+                </button>
+                <button onclick="setMode('simplify')" id="tab-simplify" class="flex-1 py-4 text-center font-bold text-gray-500 hover:text-indigo-700 hover:bg-white/50 transition min-w-[120px]">
+                    {% if request.session.lang == 'ar' %}القوى والأسس{% else %}Exponents{% endif %}
+                </button>
+                <button onclick="setMode('scientific')" id="tab-scientific" class="flex-1 py-4 text-center font-bold text-gray-500 hover:text-indigo-700 hover:bg-white/50 transition min-w-[120px]">
+                    {% if request.session.lang == 'ar' %}الصورة القياسية{% else %}Scientific Notation{% endif %}
+                </button>
+                <button onclick="setMode('expand')" id="tab-expand" class="flex-1 py-4 text-center font-bold text-gray-500 hover:text-indigo-700 hover:bg-white/50 transition min-w-[120px]">
+                    {% if request.session.lang == 'ar' %}المفكوكات{% else %}Expand{% endif %}
+                </button>
+                <button onclick="setMode('divide')" id="tab-divide" class="flex-1 py-4 text-center font-bold text-gray-500 hover:text-indigo-700 hover:bg-white/50 transition min-w-[120px]">
+                    {% if request.session.lang == 'ar' %}القسمة{% else %}Division{% endif %}
+                </button>
+                <!-- Grade 9 Tabs -->
+                <button onclick="setMode('linear_system')" id="tab-linear_system" class="flex-1 py-4 text-center font-bold text-gray-500 hover:text-indigo-700 hover:bg-white/50 transition min-w-[120px] hidden grade9-tool">
+                    {% if request.session.lang == 'ar' %}معادلتين خطيتين{% else %}Linear System{% endif %}
+                </button>
+                <button onclick="setMode('mixed_system')" id="tab-mixed_system" class="flex-1 py-4 text-center font-bold text-gray-500 hover:text-indigo-700 hover:bg-white/50 transition min-w-[120px] hidden grade9-tool">
+                    {% if request.session.lang == 'ar' %}معادلة خطية وتربيعية{% else %}Mixed System{% endif %}
+                </button>
+                <button onclick="setMode('fractions')" id="tab-fractions" class="flex-1 py-4 text-center font-bold text-gray-500 hover:text-indigo-700 hover:bg-white/50 transition min-w-[120px] hidden grade9-tool">
+                    {% if request.session.lang == 'ar' %}الكسور الجبرية{% else %}Alg. Fractions{% endif %}
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <!-- Solve / Expand Input -->
+                <div id="input-single">
+                     <label id="lbl-single" class="block text-sm font-bold text-gray-500 mb-2 uppercase tracking-wide">
+                        {% if request.session.lang == 'ar' %}اكتب المعادلة هنا{% else %}Enter Equation{% endif %}
+                    </label>
+                    <div class="relative group">
+                        <math-field 
+                            id="equation-input" 
+                            class="w-full text-2xl sm:text-3xl font-bold text-gray-800 bg-gray-50 rounded-xl border-2 border-gray-200 focus:border-indigo-500 focus:outline-none focus:ring-0 p-4 transition-all shadow-inner"
+                            virtual-keyboard-mode="onfocus"
+                            placeholder="x^2 - 5x + 6 = 0"
+                        >x^2 - 5x + 6 = 0</math-field>
+                    </div>
+                </div>
+
+                <!-- Division Input -->
+                <div id="input-double" class="hidden space-y-4">
+                    <div>
+                        <label id="lbl-double-1" class="block text-sm font-bold text-gray-500 mb-2 uppercase tracking-wide">
+                            {% if request.session.lang == 'ar' %}المقسوم (Dividend){% else %}Dividend P(x){% endif %}
+                        </label>
+                        <math-field 
+                            id="dividend-input" 
+                            class="w-full text-xl font-bold text-gray-800 bg-gray-50 rounded-xl border-2 border-gray-200 focus:border-indigo-500 p-3 shadow-inner"
+                            virtual-keyboard-mode="onfocus"
+                        >x^3 + 2x^2 - 5x - 6</math-field>
+                    </div>
+                    <div>
+                        <label id="lbl-double-2" class="block text-sm font-bold text-gray-500 mb-2 uppercase tracking-wide">
+                            {% if request.session.lang == 'ar' %}المقسوم عليه (Divisor){% else %}Divisor D(x){% endif %}
+                        </label>
+                        <math-field 
+                            id="divisor-input" 
+                            class="w-full text-xl font-bold text-gray-800 bg-gray-50 rounded-xl border-2 border-gray-200 focus:border-indigo-500 p-3 shadow-inner"
+                            virtual-keyboard-mode="onfocus"
+                        >x - 2</math-field>
+                    </div>
+                </div>
+
+                <!-- Fraction Operations Input -->
+                <div id="input-fraction-op" class="hidden space-y-4">
+                    <div class="flex justify-center mb-4">
+                        <select id="fraction-op-select" onchange="updateFractionOp()" class="bg-indigo-50 border border-indigo-300 text-indigo-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 max-w-xs">
+                            <option value="simplify">{% if request.session.lang == 'ar' %}تبسيط / اختزال{% else %}Simplify{% endif %}</option>
+                            <option value="add">{% if request.session.lang == 'ar' %}جمع (+){% else %}Add (+){% endif %}</option>
+                            <option value="sub">{% if request.session.lang == 'ar' %}طرح (-){% else %}Subtract (-){% endif %}</option>
+                            <option value="mul">{% if request.session.lang == 'ar' %}ضرب (×){% else %}Multiply (×){% endif %}</option>
+                            <option value="div">{% if request.session.lang == 'ar' %}قسمة (÷){% else %}Divide (÷){% endif %}</option>
+                            <option value="inv_mul">{% if request.session.lang == 'ar' %}معكوس ضربي{% else %}Multiplicative Inverse{% endif %}</option>
+                            <option value="inv_add">{% if request.session.lang == 'ar' %}معكوس جمعي{% else %}Additive Inverse{% endif %}</option>
+                        </select>
+                    </div>
+                    
+                    <div id="frac-input-1">
+                         <label class="block text-sm font-bold text-gray-500 mb-2 uppercase tracking-wide">
+                            {% if request.session.lang == 'ar' %}الكسر الأول{% else %}First Fraction{% endif %}
+                        </label>
+                        <math-field 
+                            id="frac-1" 
+                            class="w-full text-xl font-bold text-gray-800 bg-gray-50 rounded-xl border-2 border-gray-200 focus:border-indigo-500 p-3 shadow-inner"
+                            virtual-keyboard-mode="onfocus"
+                        >(x^2 - 4)/(x+2)</math-field>
+                    </div>
+                    
+                    <div id="frac-input-2" class="hidden">
+                         <label class="block text-sm font-bold text-gray-500 mb-2 uppercase tracking-wide">
+                            {% if request.session.lang == 'ar' %}الكسر الثاني{% else %}Second Fraction{% endif %}
+                        </label>
+                        <math-field 
+                            id="frac-2" 
+                            class="w-full text-xl font-bold text-gray-800 bg-gray-50 rounded-xl border-2 border-gray-200 focus:border-indigo-500 p-3 shadow-inner"
+                            virtual-keyboard-mode="onfocus"
+                        >(x+3)/(x-1)</math-field>
+                    </div>
+                </div>
+
+                <!-- Helper Buttons -->
+                <div class="flex gap-2 mt-4 overflow-x-auto pb-2 no-scrollbar">
+                    <button onclick="insertOp('<')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-mono font-bold text-gray-700 border border-gray-200 transition">&lt;</button>
+                    <button onclick="insertOp('>')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-mono font-bold text-gray-700 border border-gray-200 transition">&gt;</button>
+                    <button onclick="insertOp('\\le')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-mono font-bold text-gray-700 border border-gray-200 transition">≤</button>
+                    <button onclick="insertOp('\\ge')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-mono font-bold text-gray-700 border border-gray-200 transition">≥</button>
+                    <div class="w-px h-8 bg-gray-300 mx-2"></div>
+                    <button onclick="insertOp('x')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-mono font-bold text-gray-700 border border-gray-200 transition">x</button>
+                    <button onclick="insertOp('^2')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-mono font-bold text-gray-700 border border-gray-200 transition">x²</button>
+                    <button onclick="insertOp('(')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-mono font-bold text-gray-700 border border-gray-200 transition">(</button>
+                    <button onclick="insertOp(')')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-mono font-bold text-gray-700 border border-gray-200 transition">)</button>
+                </div>
+
+                <div class="mt-6 flex justify-end">
+                    <button onclick="solve()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-calculator"></i>
+                        <span id="btn-text">{% if request.session.lang == 'ar' %}حل المعادلة{% else %}Solve Equation{% endif %}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="solution-container" class="hidden space-y-6">
+            
+            <!-- Final Answer Card -->
+            <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl border border-green-200 p-6 shadow-md">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                        <i class="fa-solid fa-check text-xl"></i>
+                    </div>
+                    <h3 class="text-green-800 font-bold text-lg">{% if request.session.lang == 'ar' %}النتيجة النهائية{% else %}Final Result{% endif %}</h3>
+                </div>
+                <div id="result-display" class="text-2xl sm:text-3xl font-bold text-gray-900 text-center py-4 font-mono overflow-x-auto"></div>
+                
+                <!-- Number Line Plot -->
+                <div id="plot-container" class="hidden mt-6 bg-white rounded-2xl border border-gray-200 p-6 overflow-x-auto flex justify-center">
+                    <svg id="number-line" width="600" height="100" viewBox="0 0 600 100" class="w-full max-w-2xl"></svg>
+                </div>
+            </div>
+
+            <!-- Steps Card -->
+            <div class="bg-white rounded-3xl border border-gray-200 shadow-md overflow-hidden">
+                <div class="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h3 class="font-bold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-list-ol text-indigo-500"></i>
+                        {% if request.session.lang == 'ar' %}خطوات الحل التفصيلية{% else %}Step-by-Step Solution{% endif %}
+                    </h3>
+                </div>
+                <div id="steps-display" class="p-6 space-y-4">
+                    <!-- Steps will be injected here -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading-state" class="hidden text-center py-12">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600"></div>
+            <p class="mt-4 text-gray-500 font-medium">Solving...</p>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const mf = document.getElementById('equation-input');
+    const mfDividend = document.getElementById('dividend-input');
+    const mfDivisor = document.getElementById('divisor-input');
+    const mfFrac1 = document.getElementById('frac-1');
+    const mfFrac2 = document.getElementById('frac-2');
+    
+    let currentMode = 'solve';
+
+    function insertOp(op) {
+        let target = mf;
+        if (currentMode === 'divide' || currentMode === 'linear_system' || currentMode === 'mixed_system') {
+            if (document.activeElement === mfDivisor) target = mfDivisor;
+            else target = mfDividend;
+        } else if (currentMode === 'fractions') {
+            if (document.activeElement === mfFrac2) target = mfFrac2;
+            else target = mfFrac1;
+        }
+        target.executeCommand('insert', op);
+        target.focus();
+    }
+    
+    function updateFractionOp() {
+        const op = document.getElementById('fraction-op-select').value;
+        const frac2Div = document.getElementById('frac-input-2');
+        if (['add', 'sub', 'mul', 'div'].includes(op)) {
+            frac2Div.classList.remove('hidden');
+        } else {
+            frac2Div.classList.add('hidden');
+        }
+    }
+    
+    function setMode(mode) {
+        currentMode = mode;
+        
+        // Reset tabs
+        const tabClassInactive = 'flex-1 py-4 text-center font-bold text-gray-500 hover:text-indigo-700 hover:bg-white/50 transition min-w-[120px] cursor-pointer';
+        const tabClassActive = 'flex-1 py-4 text-center font-bold text-indigo-900 border-b-2 border-indigo-600 bg-white transition min-w-[120px] cursor-default';
+        
+        document.getElementById('tab-solve').className = tabClassInactive;
+        document.getElementById('tab-quadratic').className = tabClassInactive;
+        document.getElementById('tab-factorize').className = tabClassInactive;
+        document.getElementById('tab-simplify').className = tabClassInactive;
+        document.getElementById('tab-scientific').className = tabClassInactive;
+        document.getElementById('tab-expand').className = tabClassInactive;
+        document.getElementById('tab-divide').className = tabClassInactive;
+        document.getElementById('tab-linear_system').className = tabClassInactive;
+        document.getElementById('tab-mixed_system').className = tabClassInactive;
+        document.getElementById('tab-fractions').className = tabClassInactive;
+        
+        // Reset inputs
+        document.getElementById('input-single').classList.add('hidden');
+        document.getElementById('input-double').classList.add('hidden');
+        document.getElementById('input-fraction-op').classList.add('hidden');
+        
+        // Hide plot
+        document.getElementById('plot-container').classList.add('hidden');
+        
+        // Set active state
+        if (mode === 'solve') {
+            document.getElementById('tab-solve').className = tabClassActive;
+            document.getElementById('input-single').classList.remove('hidden');
+            document.getElementById('lbl-single').innerText = '{% if request.session.lang == "ar" %}اكتب المعادلة أو المتباينة{% else %}Enter Equation or Inequality{% endif %}';
+            document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}حل المشكلة{% else %}Solve{% endif %}';
+        } else if (mode === 'quadratic') {
+            document.getElementById('tab-quadratic').className = tabClassActive;
+            document.getElementById('input-single').classList.remove('hidden');
+            document.getElementById('lbl-single').innerText = '{% if request.session.lang == "ar" %}اكتب المعادلة التربيعية{% else %}Enter Quadratic Equation{% endif %}';
+            document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}حل المعادلة{% else %}Solve{% endif %}';
+        } else if (mode === 'simplify') {
+            document.getElementById('tab-simplify').className = tabClassActive;
+            document.getElementById('input-single').classList.remove('hidden');
+            document.getElementById('lbl-single').innerText = '{% if request.session.lang == "ar" %}اكتب المقدار الأسي{% else %}Enter Exponential Expression{% endif %}';
+            document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}تبسيط{% else %}Simplify{% endif %}';
+        } else if (mode === 'scientific') {
+            document.getElementById('tab-scientific').className = tabClassActive;
+            document.getElementById('input-single').classList.remove('hidden');
+            document.getElementById('lbl-single').innerText = '{% if request.session.lang == "ar" %}اكتب الرقم أو الصيغة العلمية{% else %}Enter Number or Scientific Notation{% endif %}';
+            document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}تحويل{% else %}Convert{% endif %}';
+        } else if (mode === 'expand') {
+            document.getElementById('tab-expand').className = tabClassActive;
+            document.getElementById('input-single').classList.remove('hidden');
+            document.getElementById('lbl-single').innerText = '{% if request.session.lang == "ar" %}اكتب المقدار هنا{% else %}Enter Expression{% endif %}';
+            document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}فك الأقواس{% else %}Expand{% endif %}';
+        } else if (mode === 'divide') {
+            document.getElementById('tab-divide').className = tabClassActive;
+            document.getElementById('input-double').classList.remove('hidden');
+            document.getElementById('lbl-double-1').innerText = '{% if request.session.lang == "ar" %}المقسوم (Dividend){% else %}Dividend P(x){% endif %}';
+            document.getElementById('lbl-double-2').innerText = '{% if request.session.lang == "ar" %}المقسوم عليه (Divisor){% else %}Divisor D(x){% endif %}';
+            document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}أجرِ القسمة{% else %}Divide{% endif %}';
+        } else if (mode === 'linear_system') {
+            document.getElementById('tab-linear_system').className = tabClassActive;
+            document.getElementById('input-double').classList.remove('hidden');
+            document.getElementById('lbl-double-1').innerText = '{% if request.session.lang == "ar" %}المعادلة الأولى{% else %}Equation 1{% endif %}';
+            document.getElementById('lbl-double-2').innerText = '{% if request.session.lang == "ar" %}المعادلة الثانية{% else %}Equation 2{% endif %}';
+            document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}حل النظام{% else %}Solve System{% endif %}';
+        } else if (mode === 'mixed_system') {
+            document.getElementById('tab-mixed_system').className = tabClassActive;
+            document.getElementById('input-double').classList.remove('hidden');
+            document.getElementById('lbl-double-1').innerText = '{% if request.session.lang == "ar" %}المعادلة الخطية{% else %}Linear Equation{% endif %}';
+            document.getElementById('lbl-double-2').innerText = '{% if request.session.lang == "ar" %}المعادلة التربيعية{% else %}Quadratic Equation{% endif %}';
+            document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}حل النظام{% else %}Solve System{% endif %}';
+        } else if (mode === 'fractions') {
+            document.getElementById('tab-fractions').className = tabClassActive;
+            document.getElementById('input-fraction-op').classList.remove('hidden');
+            updateFractionOp();
+            document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}احسب{% else %}Calculate{% endif %}';
+        }
+    }
+
+    let myChart = null;
+
+    function renderGraph(plotData) {
+        const ctx = document.getElementById('graph-canvas').getContext('2d');
+        const canvas = document.getElementById('graph-canvas');
+        const svg = document.getElementById('number-line');
+        
+        svg.classList.add('hidden');
+        canvas.classList.remove('hidden');
+        
+        if (myChart) {
+            myChart.destroy();
+        }
+        
+        const datasets = plotData.map(d => {
+            if (d.type === 'point') {
+                return {
+                    label: d.label,
+                    data: d.points,
+                    backgroundColor: d.color,
+                    borderColor: d.color,
+                    pointRadius: 6,
+                    type: 'scatter'
+                };
+            } else {
+                return {
+                    label: d.label,
+                    data: d.points,
+                    borderColor: d.color,
+                    backgroundColor: d.color,
+                    type: 'line',
+                    fill: false,
+                    tension: 0,
+                    pointRadius: 0,
+                    borderWidth: 2
+                };
+            }
+        });
+        
+        myChart = new Chart(ctx, {
+            data: { datasets },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': (' + context.parsed.x + ', ' + context.parsed.y + ')';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { 
+                        type: 'linear', 
+                        position: 'center',
+                        grid: { color: '#e5e7eb' },
+                        border: { color: '#374151', width: 2 }
+                    },
+                    y: { 
+                        type: 'linear', 
+                        position: 'center',
+                        grid: { color: '#e5e7eb' },
+                        border: { color: '#374151', width: 2 }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderNumberLine(data) {
+        const svg = document.getElementById('number-line');
+        const canvas = document.getElementById('graph-canvas');
+        svg.classList.remove('hidden');
+        canvas.classList.add('hidden');
+        
+        // Clear
+        while (svg.firstChild) {
+            svg.removeChild(svg.firstChild);
+        }
+        
+        const width = 600;
+        const height = 100;
+        const margin = 40;
+        const y = height / 2;
+        
+        // Define range
+        let val = data.val;
+        let start = Math.floor(val) - 5;
+        let end = Math.ceil(val) + 5;
+        
+        // Scale function
+        function scale(x) {
+            return margin + ((x - start) / (end - start)) * (width - 2 * margin);
+        }
+        
+        // Draw axis line
+        const axis = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        axis.setAttribute("x1", 0);
+        axis.setAttribute("y1", y);
+        axis.setAttribute("x2", width);
+        axis.setAttribute("y2", y);
+        axis.setAttribute("stroke", "#333");
+        axis.setAttribute("stroke-width", "2");
+        svg.appendChild(axis);
+        
+        // Add ticks
+        for (let i = start; i <= end; i++) {
+            const xPos = scale(i);
+            if (xPos < 0 || xPos > width) continue;
+            
+            const tick = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            tick.setAttribute("x1", xPos);
+            tick.setAttribute("y1", y - 5);
+            tick.setAttribute("x2", xPos);
+            tick.setAttribute("y2", y + 5);
+            tick.setAttribute("stroke", "#555");
+            tick.setAttribute("stroke-width", "2");
+            svg.appendChild(tick);
+            
+            const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            label.setAttribute("x", xPos);
+            label.setAttribute("y", y + 25);
+            label.setAttribute("text-anchor", "middle");
+            label.setAttribute("font-size", "12");
+            label.setAttribute("fill", "#666");
+            label.textContent = i;
+            svg.appendChild(label);
+        }
+        
+        // Draw Inequality
+        const xVal = scale(val);
+        const direction = data.direction; // 'right' or 'left'
+        const inclusive = data.inclusive;
+        
+        // Draw shading/arrow
+        const arrowLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        arrowLine.setAttribute("x1", xVal);
+        arrowLine.setAttribute("y1", y - 15); // Slightly above axis
+        arrowLine.setAttribute("y2", y - 15);
+        arrowLine.setAttribute("stroke", "#4f46e5"); // Indigo-600
+        arrowLine.setAttribute("stroke-width", "4");
+        
+        if (direction === 'right') {
+            arrowLine.setAttribute("x2", width - 10);
+        } else {
+             arrowLine.setAttribute("x2", 10);
+        }
+        svg.appendChild(arrowLine);
+        
+        // Circle at value
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("cx", xVal);
+        circle.setAttribute("cy", y - 15);
+        circle.setAttribute("r", 6);
+        circle.setAttribute("stroke", "#4f46e5");
+        circle.setAttribute("stroke-width", "3");
+        circle.setAttribute("fill", inclusive ? "#4f46e5" : "white");
+        svg.appendChild(circle);
+    }
+
+    async function solve() {
+        const container = document.getElementById('solution-container');
+        const loading = document.getElementById('loading-state');
+        const resultDisplay = document.getElementById('result-display');
+        const stepsDisplay = document.getElementById('steps-display');
+        const plotContainer = document.getElementById('plot-container');
+
+        let payload = { mode: currentMode };
+        
+        if (currentMode === 'divide') {
+            const dividend = mfDividend.getValue("ascii-math");
+            const divisor = mfDivisor.getValue("ascii-math");
+            
+            if (!dividend || !divisor) {
+                alert('Please fill in both fields');
+                return;
+            }
+            payload.dividend = dividend;
+            payload.divisor = divisor;
+        } else if (currentMode === 'linear_system') {
+            const eq1 = mfDividend.getValue("ascii-math");
+            const eq2 = mfDivisor.getValue("ascii-math");
+             if (!eq1 || !eq2) {
+                alert('Please fill in both fields');
+                return;
+            }
+            payload.eq1 = eq1;
+            payload.eq2 = eq2;
+        } else if (currentMode === 'mixed_system') {
+            const linear = mfDividend.getValue("ascii-math");
+            const quad = mfDivisor.getValue("ascii-math");
+             if (!linear || !quad) {
+                alert('Please fill in both fields');
+                return;
+            }
+            payload.linear = linear;
+            payload.quad = quad;
+        } else if (currentMode === 'fractions') {
+            const op = document.getElementById('fraction-op-select').value;
+            const f1 = mfFrac1.getValue("ascii-math");
+            const f2 = mfFrac2.getValue("ascii-math");
+            
+            if (!f1) { alert('Please fill in the first fraction'); return; }
+            
+            if (op === 'simplify') {
+                payload.mode = 'simplify_fraction';
+                payload.fraction = f1;
+            } else if (['add', 'sub', 'mul', 'div'].includes(op)) {
+                if (!f2) { alert('Please fill in the second fraction'); return; }
+                payload.mode = 'operate_fraction';
+                payload.f1 = f1;
+                payload.f2 = f2;
+                // Map select values to op symbols if needed, or backend handles 'add' etc.
+                // Engine expects +, -, *, /
+                const opMap = {'add': '+', 'sub': '-', 'mul': '*', 'div': '/'};
+                payload.op = opMap[op];
+            } else if (op.startsWith('inv_')) {
+                payload.mode = 'inverse_fraction';
+                payload.fraction = f1;
+                payload.type = op === 'inv_mul' ? 'mul' : 'add';
+            }
+            
+        } else {
+            const val = mf.getValue("ascii-math");
+            if (!val) return;
+            
+            if (currentMode === 'expand') {
+                payload.expression = val;
+            } else if (currentMode === 'factorize') {
+                payload.expression = val;
+            } else if (currentMode === 'simplify') {
+                if (val.includes('=')) {
+                    payload.mode = 'solve';
+                    payload.equation = val;
+                } else {
+                    payload.expression = val;
+                }
+            } else if (currentMode === 'scientific') {
+                payload.value = val;
+            } else {
+                payload.mode = 'solve';
+                payload.equation = val;
+            }
+        }
+
+        // Reset UI
+        container.classList.add('hidden');
+        plotContainer.classList.add('hidden');
+        loading.classList.remove('hidden');
+        
+        try {
+            const response = await fetch('{% url "tools:api_solve" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            loading.classList.add('hidden');
+            container.classList.remove('hidden');
+
+            if (data.error) {
+                resultDisplay.innerHTML = `<span class="text-red-500">Error: ${data.error}</span>`;
+                stepsDisplay.innerHTML = '';
+            } else {
+                // Show result
+                resultDisplay.innerHTML = `$$ ${data.latex} $$`;
+                
+                // Show steps
+                if (data.steps && data.steps.length > 0) {
+                    stepsDisplay.innerHTML = data.steps.map((step, index) => `
+                        <div class="flex gap-4">
+                            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                                ${index + 1}
+                            </div>
+                            <div class="flex-grow pt-1">
+                                <div class="text-gray-800 text-lg leading-relaxed bg-gray-50 rounded-xl p-4 border border-gray-100">
+                                    ${step}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    stepsDisplay.innerHTML = '<p class="text-gray-500 italic text-center">No steps available.</p>';
+                }
+
+                // Plot Graph or Number Line if data exists
+                if (data.plot_data) {
+                    if (Array.isArray(data.plot_data)) {
+                        renderGraph(data.plot_data);
+                    } else {
+                        renderNumberLine(data.plot_data);
+                    }
+                    plotContainer.classList.remove('hidden');
+                }
+
+                // Typeset Math
+                if (window.MathJax) {
+                    MathJax.typesetPromise([container]);
+                }
+            }
+
+        } catch (e) {
+            console.error(e);
+            loading.classList.add('hidden');
+            alert("Something went wrong!");
+        }
+    }
+    
+    // Enter key to solve
+    mf.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault(); 
+            solve();
+        }
+    });
+
+    // Check Grade and Show Tools
+    const gradeSlug = "{{ grade.slug }}";
+    if (gradeSlug === 'prep-3') {
+        document.querySelectorAll('.grade9-tool').forEach(el => el.classList.remove('hidden'));
+    }
+
+    // Auto-select mode based on tool slug
+    const toolSlug = "{{ tool.slug }}";
+    if (toolSlug === 'factorization-assistant') {
+        setMode('factorize');
+    } else if (toolSlug === 'quadratic-solver') {
+        setMode('quadratic');
+    } else if (toolSlug === 'exponents-calculator') {
+        setMode('simplify');
+    } else if (toolSlug === 'algebra-systems') {
+        setMode('linear_system');
+    } else if (toolSlug === 'algebra-fractions') {
+        setMode('fractions');
+    } else {
+        // Default
+        setMode('solve');
+    }
+</script>
+{% endblock %}
