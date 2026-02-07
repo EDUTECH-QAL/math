@@ -29,6 +29,16 @@ class Command(BaseCommand):
             }
         )
 
+        grade3_prep, _ = Grade.objects.get_or_create(
+            slug='prep-3',
+            defaults={
+                'name_en': '3rd Preparatory',
+                'name_ar': 'الثالث الاعدادي',
+                'stage': 'PREP',
+                'order': 3
+            }
+        )
+
         # 2. Create Tools
         calc, _ = Tool.objects.get_or_create(
             slug='smart-calculator',
@@ -114,5 +124,21 @@ class Command(BaseCommand):
         GradeTool.objects.get_or_create(grade=grade2_prep, tool=solver)
         GradeTool.objects.get_or_create(grade=grade2_prep, tool=geometry)
         GradeTool.objects.get_or_create(grade=grade2_prep, tool=graph)
+
+        # Grade 3 Prep Config
+        GradeTool.objects.get_or_create(
+            grade=grade3_prep,
+            tool=calc,
+            defaults={
+                'config_json': {
+                    'allow_trig': True, 
+                    'allow_roots': True,
+                    'allow_fractions': True
+                }
+            }
+        )
+        GradeTool.objects.get_or_create(grade=grade3_prep, tool=solver)
+        GradeTool.objects.get_or_create(grade=grade3_prep, tool=geometry)
+        GradeTool.objects.get_or_create(grade=grade3_prep, tool=graph)
 
         self.stdout.write(self.style.SUCCESS('Successfully seeded initial data'))
