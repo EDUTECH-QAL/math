@@ -1,9 +1,11 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="{{ request.session.lang|default:'en' }}" dir="{% if request.session.lang == 'ar' %}rtl{% else %}ltr{% endif %}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Smart Math Tools{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'core/images/favicon.ico' %}">
     <!-- Tailwind CSS (via CDN for MVP) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
