@@ -402,6 +402,20 @@
                 body: JSON.stringify(payload)
             });
             
+            // Handle non-OK status codes manually to avoid JSON parse errors on HTML error pages
+            if (!response.ok) {
+                const text = await response.text();
+                // Try to see if it's JSON
+                try {
+                    const jsonError = JSON.parse(text);
+                    resEl.innerHTML = `<div class="text-red-500 text-center font-bold">${jsonError.error || 'Unknown error'}</div>`;
+                } catch(e) {
+                    // Fallback for HTML errors (500, 403, etc.)
+                    resEl.innerHTML = `<div class="text-red-500 text-center font-bold">Server Error (${response.status})</div>`;
+                }
+                return;
+            }
+
             const data = await response.json();
             
             if (data.error) {

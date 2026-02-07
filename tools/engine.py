@@ -3,6 +3,7 @@ from sympy import symbols, solve, Eq, factor, expand, simplify, latex, Rational,
 from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
 import random
 import math
+import math as m
 
 def sanitize_expression(expr_str):
     """
@@ -69,6 +70,11 @@ def solve_equation_step_by_step(equation_str, lang='en'):
         }
     }
     t = phrases.get(lang, phrases['en'])
+    
+    if not equation_str or not str(equation_str).strip():
+        msg = "الرجاء إدخال معادلة صحيحة" if lang == 'ar' else "Please enter a valid equation"
+        return {'error': msg}
+
     steps = []
     try:
         # Handle inequalities briefly (not full support yet)
@@ -83,6 +89,10 @@ def solve_equation_step_by_step(equation_str, lang='en'):
         if len(parts) != 2:
             return {'error': 'Invalid equation format'}
             
+        if not parts[0].strip() or not parts[1].strip():
+             msg = "الرجاء إدخال معادلة كاملة" if lang == 'ar' else "Please enter a complete equation"
+             return {'error': msg}
+
         lhs = safe_sympify(parts[0])
         rhs = safe_sympify(parts[1])
         eq = Eq(lhs, rhs)
@@ -242,32 +252,22 @@ def factorize_expression_steps(expression_str, lang='en'):
         common = sympy.gcd(terms)
         if common != 1:
             steps.append(f"{t['common_factor']}: {latex(common)}")
-            expr = factor(expr) # This does it all, but let's show the intermediate step if possible
-            # Actually sympy.factor does recursive.
-            # Let's just state we take it out.
+            expr = factor(expr)
             steps.append(f"${latex(common)} ({latex(expr/common)})$")
-        
-        # 2. Heuristics for the remaining part (or the whole if no common factor)
-        # We can look at the structure of expr (or expr/common)
         
         factored = factor(expr)
         
         # Try to guess method based on expression structure
-        # Difference of Squares: a^2 - b^2
         if expr.is_Add and len(terms) == 2:
             # Check signs
             c1, c2 = terms[0], terms[1]
-            # simplistic check
             if (c1.is_Mul and c1.as_coeff_Mul()[0] < 0) or (c2.is_Mul and c2.as_coeff_Mul()[0] < 0):
-                # One negative, one positive likely
                 steps.append(f"{t['identify']}: {t['diff_squares']}")
             elif degree(expr) == 3:
                 steps.append(f"{t['identify']}: {t['sum_cubes']} / {t['diff_cubes']}")
-        
         elif expr.is_Add and len(terms) == 3:
              if degree(expr) == 2:
                  steps.append(f"{t['identify']}: {t['trinomial']}")
-        
         elif expr.is_Add and len(terms) == 4:
              steps.append(f"{t['identify']}: {t['grouping']}")
 
@@ -320,41 +320,27 @@ def quadrilateral_area(shape_type, params, lang='en'):
     """
     phrases = {
         'en': {
-            'square': 'Square',
-            'rhombus': 'Rhombus',
-            'trapezoid': 'Trapezoid',
-            'diagonal': 'Diagonal',
-            'base': 'Base',
-            'height': 'Height',
-            'median': 'Median Base',
-            'area_formula': 'Area Formula',
-            'substitute': 'Substitution',
-            'result': 'Area',
-            'd1': 'Diagonal 1',
-            'd2': 'Diagonal 2'
+            'square': 'Square', 'rhombus': 'Rhombus', 'trapezoid': 'Trapezoid',
+            'diagonal': 'Diagonal', 'base': 'Base', 'height': 'Height',
+            'median': 'Median Base', 'area_formula': 'Area Formula',
+            'substitute': 'Substitution', 'result': 'Area', 'd1': 'Diagonal 1', 'd2': 'Diagonal 2'
         },
         'ar': {
-            'square': 'المربع',
-            'rhombus': 'المعين',
-            'trapezoid': 'شبه المنحرف',
-            'diagonal': 'القطر',
-            'base': 'القاعدة',
-            'height': 'الارتفاع',
-            'median': 'القاعدة المتوسطة',
-            'area_formula': 'قانون المساحة',
-            'substitute': 'التعويض',
-            'result': 'المساحة',
-            'd1': 'القطر 1',
-            'd2': 'القطر 2'
+            'square': 'المربع', 'rhombus': 'المعين', 'trapezoid': 'شبه المنحرف',
+            'diagonal': 'القطر', 'base': 'القاعدة', 'height': 'الارتفاع',
+            'median': 'القاعدة المتوسطة', 'area_formula': 'قانون المساحة',
+            'substitute': 'التعويض', 'result': 'المساحة', 'd1': 'القطر 1', 'd2': 'القطر 2'
         }
     }
     t = phrases.get(lang, phrases['en'])
     steps = []
     
     try:
+        if not params:
+            params = {}
+            
         area = 0
         if shape_type == 'square':
-            # Area = 0.5 * d^2
             d = float(params.get('diagonal', 0))
             steps.append(f"{t['square']} ({t['diagonal']} = {d})")
             steps.append(f"{t['area_formula']}: $A = \\frac{{1}}{{2}} d^2$")
@@ -362,7 +348,6 @@ def quadrilateral_area(shape_type, params, lang='en'):
             steps.append(f"{t['substitute']}: $A = 0.5 \\times ({d})^2 = 0.5 \\times {d**2}$")
             
         elif shape_type == 'rhombus':
-            # Area = 0.5 * d1 * d2
             d1 = float(params.get('d1', 0))
             d2 = float(params.get('d2', 0))
             steps.append(f"{t['rhombus']} ({t['d1']}={d1}, {t['d2']}={d2})")
@@ -371,7 +356,6 @@ def quadrilateral_area(shape_type, params, lang='en'):
             steps.append(f"{t['substitute']}: $A = 0.5 \\times {d1} \\times {d2}$")
             
         elif shape_type == 'trapezoid':
-            # Area = Median * Height or 0.5(b1+b2)*h
             h = float(params.get('h', 0))
             if 'm' in params and params['m']:
                 m = float(params.get('m', 0))
@@ -394,13 +378,6 @@ def quadrilateral_area(shape_type, params, lang='en'):
         return {'error': str(e)}
 
 def probability_simulator(sim_type, trials=1, lang='en'):
-    """
-    Simulates probability experiments (Coin, Dice, Cards).
-    Returns theoretical vs experimental comparison.
-    """
-    # Phrases defined above... reuse or redefine if needed.
-    # For brevity, let's just use keys directly or simple map.
-    
     results = {}
     theoretical = {}
     
@@ -422,13 +399,6 @@ def probability_simulator(sim_type, trials=1, lang='en'):
         res = random.choice(space)
         results[res] = results.get(res, 0) + 1
             
-    # Format for Frontend:
-    # {
-    #   total_trials: N,
-    #   results: { 'Head': 5, ... },
-    #   probabilities: { 'Head': { theoretical: 0.5 }, ... }
-    # }
-    
     response_probs = {}
     for key in space:
         response_probs[key] = {'theoretical': theoretical[key]}
@@ -562,8 +532,9 @@ def find_polynomial_zeros(poly_str, lang='en'):
         if factored != poly:
             steps.append(f"Factorize: ${latex(Eq(factored, 0))}$")
             
-        steps.append(f"Zeros: ${latex(zeros)}$")
-        return {'latex': latex(zeros), 'steps': steps}
+        zeros_latex = ', '.join([latex(z) for z in zeros])
+        steps.append(f"Zeros: ${zeros_latex}$")
+        return {'latex': zeros_latex, 'steps': steps}
     except Exception as e:
         return {'error': str(e)}
 
@@ -584,19 +555,12 @@ def solve_mixed_system_steps(linear_str, quad_str, lang='en'):
         
         steps = [f"System: ${latex(linear)}$ (Linear)", f"${latex(quad)}$ (Quadratic)"]
         
-        # 1. Isolate variable in linear
-        # Heuristic: Isolate the one with coeff 1 or -1
-        target_var = syms[0]
-        # This is a simplification. Real step-by-step needs to show isolation.
-        
         solutions = solve((l_std, q_std), syms)
         
         steps.append(f"Solve linear equation for one variable and substitute into quadratic.")
         
         sol_strs = []
         for s in solutions:
-            # s is tuple of values corresponding to syms
-            # or dict? solve returns list of tuples usually for systems
             if isinstance(s, tuple):
                  parts = [f"{latex(syms[i])} = {latex(val)}" for i, val in enumerate(s)]
                  sol_strs.append("(" + ", ".join(parts) + ")")
@@ -729,7 +693,7 @@ def stratified_sample(total, stratum, sample_size):
             f"Calc: $\\frac{{{stratum}}}{{{total}}} \\times {sample_size} = {result}$",
             f"Result: {round(result)} (approx)"
         ]
-        return {'result': result, 'steps': steps}
+        return {'result': round(result), 'steps': steps}
     except Exception as e:
         return {'error': str(e)}
 
@@ -748,16 +712,58 @@ def probability_laws(pa, pb, p_intersect, lang='en'):
         
         steps = [
             f"$P(A) = {pa}, P(B) = {pb}, P(A \\cap B) = {p_int}$",
-            f"1. Union $P(A \\cup B) = P(A) + P(B) - P(A \\cap B) = {pa} + {pb} - {p_int} = {p_union}$",
-            f"2. Diff $P(A - B) = P(A) - P(A \\cap B) = {pa} - {p_int} = {p_diff_a_b}$",
-            f"3. Diff $P(B - A) = P(B) - P(A \\cap B) = {pb} - {p_int} = {p_diff_b_a}$",
-            f"4. Comp $P(A') = 1 - P(A) = 1 - {pa} = {p_comp_a}$"
+            f"1. Union $P(A \\cup B) = P(A) + P(B) - P(A \\cap B) = {pa} + {pb} - {p_int} = {round(p_union, 4)}$",
+            f"2. Diff $P(A - B) = P(A) - P(A \\cap B) = {pa} - {p_int} = {round(p_diff_a_b, 4)}$",
+            f"3. Diff $P(B - A) = P(B) - P(A \\cap B) = {pb} - {p_int} = {round(p_diff_b_a, 4)}$",
+            f"4. Comp $P(A') = 1 - P(A) = 1 - {pa} = {round(p_comp_a, 4)}$"
         ]
         
         return {
-            'union': p_union,
-            'diff_ab': p_diff_a_b,
-            'comp_a': p_comp_a,
+            'union': round(p_union, 4),
+            'diff_ab': round(p_diff_a_b, 4),
+            'comp_a': round(p_comp_a, 4),
+            'steps': steps
+        }
+    except Exception as e:
+        return {'error': str(e)}
+
+def solve_circle_angles(angle_type, value, lang='en'):
+    try:
+        val = float(value)
+        steps = []
+        
+        central = 0
+        inscribed = 0
+        tangent = 0 # Angle between tangent and chord
+        
+        if angle_type == 'central':
+            central = val
+            steps.append(f"Given Central Angle = ${val}^\\circ$")
+            inscribed = val / 2
+            tangent = val / 2
+            steps.append(f"Inscribed Angle = $\\frac{{1}}{{2}} \\times \\text{{Central}} = \\frac{{{val}}}{{2}} = {inscribed}^\\circ$")
+            steps.append(f"Tangent-Chord Angle = $\\frac{{1}}{{2}} \\times \\text{{Central}} = {tangent}^\\circ$")
+            
+        elif angle_type == 'inscribed':
+            inscribed = val
+            steps.append(f"Given Inscribed Angle = ${val}^\\circ$")
+            central = val * 2
+            tangent = val
+            steps.append(f"Central Angle = $2 \\times \\text{{Inscribed}} = 2 \\times {val} = {central}^\\circ$")
+            steps.append(f"Tangent-Chord Angle = Inscribed Angle = ${tangent}^\\circ$")
+            
+        elif angle_type == 'tangent':
+            tangent = val
+            steps.append(f"Given Tangent-Chord Angle = ${val}^\\circ$")
+            central = val * 2
+            inscribed = val
+            steps.append(f"Central Angle = $2 \\times \\text{{Tangent}} = 2 \\times {val} = {central}^\\circ$")
+            steps.append(f"Inscribed Angle = Tangent-Chord Angle = ${inscribed}^\\circ$")
+            
+        return {
+            'central': central,
+            'inscribed': inscribed,
+            'tangent': tangent,
             'steps': steps
         }
     except Exception as e:
@@ -774,14 +780,11 @@ def circle_tangent_calc(r, dist, lang='en'):
             return {'error': 'Point must be outside circle (d > r) for tangents.', 'steps': steps}
             
         # Tangent Length
-        # t^2 + r^2 = d^2 -> t = sqrt(d^2 - r^2)
         t_len = math.sqrt(d**2 - r**2)
         steps.append(f"Tangent Length: $t = \\sqrt{{d^2 - r^2}}$")
         steps.append(f"Calc: $\\sqrt{{{d}^2 - {r}^2}} = \\sqrt{{{d**2} - {r**2}}} = \\sqrt{{{d**2 - r**2}}} = {round(t_len, 2)}$")
         
         # Angle between tangents
-        # sin(theta/2) = r/d
-        # theta = 2 * asin(r/d)
         import math as m
         theta_rad = 2 * m.asin(r/d)
         theta_deg = m.degrees(theta_rad)
@@ -899,339 +902,5 @@ def midpoint_slope_calc(x1, y1, x2, y2, calc_type='midpoint', lang='en'):
             steps.append(f"Calc: $\\frac{{{y2}-{y1}}}{{{x2}-{x1}}} = {m}$")
             return {'result': m, 'steps': steps}
             
-    except Exception as e:
-        return {'error': str(e)}
-
-# --- Grade 9 New Tools Implementation ---
-
-def solve_linear_system_steps(eq1_str, eq2_str, lang='en'):
-    try:
-        eq1 = Eq(safe_sympify(eq1_str.split('=')[0]), safe_sympify(eq1_str.split('=')[1]))
-        eq2 = Eq(safe_sympify(eq2_str.split('=')[0]), safe_sympify(eq2_str.split('=')[1]))
-        
-        # Assume variables are x and y
-        vars = list(eq1.free_symbols.union(eq2.free_symbols))
-        vars = sorted(vars, key=lambda v: v.name) # x, y usually
-        if len(vars) == 0: vars = [symbols('x'), symbols('y')]
-        
-        steps = [
-            f"Equation 1: ${latex(eq1)}$",
-            f"Equation 2: ${latex(eq2)}$"
-        ]
-        
-        sol = solve((eq1, eq2), vars)
-        
-        steps.append("Using Substitution or Elimination method:")
-        if sol:
-            # Handle single solution (dict) or multiple
-            if isinstance(sol, dict):
-                sols_latex = ', '.join([f"{latex(k)} = {latex(v)}" for k, v in sol.items()])
-                steps.append(f"Solution: ${sols_latex}$")
-                result_latex = sols_latex
-            elif isinstance(sol, list):
-                sols_latex = []
-                for s in sol:
-                    if isinstance(s, tuple):
-                        s_str = ', '.join([f"{latex(v)} = {latex(val)}" for v, val in zip(vars, s)])
-                        sols_latex.append(f"({s_str})")
-                    else:
-                         sols_latex.append(latex(s))
-                result_latex = ', '.join(sols_latex)
-                steps.append(f"Solution set: $\\{{ {result_latex} \\}}$")
-            else:
-                 result_latex = latex(sol)
-        else:
-            steps.append("No solution (Parallel lines)")
-            result_latex = "\\phi"
-            
-        return {'latex': result_latex, 'steps': steps}
-    except Exception as e:
-        return {'error': str(e)}
-
-def solve_mixed_system_steps(linear_str, quad_str, lang='en'):
-    try:
-        # linear: y = x + 1 or similar. Ensure = 0 form for internal processing
-        lin_lhs, lin_rhs = linear_str.split('=')
-        quad_lhs, quad_rhs = quad_str.split('=')
-        
-        eq_lin = Eq(safe_sympify(lin_lhs), safe_sympify(lin_rhs))
-        eq_quad = Eq(safe_sympify(quad_lhs), safe_sympify(quad_rhs))
-        
-        vars = list(eq_lin.free_symbols.union(eq_quad.free_symbols))
-        vars = sorted(vars, key=lambda v: v.name)
-        
-        steps = [
-            f"Linear Eq: ${latex(eq_lin)}$",
-            f"Quadratic Eq: ${latex(eq_quad)}$",
-            "Method: Substitution (express one variable from linear eq and substitute in quadratic)"
-        ]
-        
-        sol = solve((eq_lin, eq_quad), vars)
-        
-        if sol:
-            sol_latex = []
-            for s in sol:
-                # s is tuple of values corresponding to vars
-                val_str = ', '.join([f"{latex(v)}={latex(val)}" for v, val in zip(vars, s)])
-                sol_latex.append(f"({val_str})")
-                
-            steps.append(f"Found {len(sol)} solution(s).")
-            result_latex = '\\{ ' + ', '.join(sol_latex) + ' \\}'
-        else:
-            steps.append("No real intersection.")
-            result_latex = "\\phi"
-            
-        return {'latex': result_latex, 'steps': steps}
-    except Exception as e:
-        return {'error': str(e)}
-
-def find_polynomial_zeros(poly_str, lang='en'):
-    try:
-        poly = safe_sympify(poly_str)
-        steps = [f"Function: $f(x) = {latex(poly)}$"]
-        steps.append("Set $f(x) = 0$")
-        
-        # Factorize
-        factored = factor(poly)
-        steps.append(f"Factorize: ${latex(factored)} = 0$")
-        
-        zeros = solve(poly)
-        zeros_latex = ', '.join([latex(z) for z in zeros])
-        
-        steps.append(f"Zeros: $Z(f) = \\{{ {zeros_latex} \\}}$")
-        
-        return {'latex': zeros_latex, 'steps': steps}
-    except Exception as e:
-        return {'error': str(e)}
-
-def simplify_algebraic_fraction(frac_str, lang='en'):
-    try:
-        # Expect input like "(x^2-4)/(x+2)"
-        expr = safe_sympify(frac_str)
-        numer, denom = expr.as_numer_denom()
-        
-        steps = [f"Fraction: $\\frac{{{latex(numer)}}}{{{latex(denom)}}}$"]
-        
-        # Factor both
-        fact_num = factor(numer)
-        fact_den = factor(denom)
-        
-        steps.append(f"Factor Numerator: ${latex(fact_num)}$")
-        steps.append(f"Factor Denominator: ${latex(fact_den)}$")
-        
-        # Domain (zeros of denominator)
-        domain_excl = solve(denom)
-        domain_str = ', '.join([latex(d) for d in domain_excl])
-        steps.append(f"Domain: $\\mathbb{{R}} - \\{{ {domain_str} \\}}$")
-        
-        # Simplify
-        simplified = simplify(expr)
-        steps.append(f"Simplified: ${latex(simplified)}$")
-        
-        return {'latex': latex(simplified), 'steps': steps}
-    except Exception as e:
-        return {'error': str(e)}
-
-def operate_algebraic_fractions(f1_str, f2_str, op, lang='en'):
-    try:
-        f1 = safe_sympify(f1_str)
-        f2 = safe_sympify(f2_str)
-        
-        steps = [f"Input: ${latex(f1)} {op} {latex(f2)}$"]
-        
-        # Factor everything first for display
-        n1, d1 = f1.as_numer_denom()
-        n2, d2 = f2.as_numer_denom()
-        
-        steps.append(f"Analyzed Form: $\\frac{{{latex(factor(n1))}}}{{{latex(factor(d1))}}} {op} \\frac{{{latex(factor(n2))}}}{{{latex(factor(d2))}}}$")
-        
-        # Calculate domain (union of zeros of denominators)
-        bad_points = solve(d1) + solve(d2)
-        
-        # Perform Op
-        result = None
-        if op == '+': result = f1 + f2
-        elif op == '-': result = f1 - f2
-        elif op == '*': result = f1 * f2
-        elif op == '/': 
-            result = f1 / f2
-            # For division, add numerator of f2 to domain restrictions
-            bad_points += solve(n2)
-            
-        bad_points = sorted(list(set([float(p) if p.is_real else p for p in bad_points])), key=lambda x: float(x) if hasattr(x, 'is_real') and x.is_real else 0)
-        domain_str = ', '.join([latex(p) for p in bad_points])
-        
-        steps.append(f"Common Domain: $\\mathbb{{R}} - \\{{ {domain_str} \\}}$")
-        
-        simplified = simplify(result)
-        steps.append(f"Result (Simplified): ${latex(simplified)}$")
-        
-        return {'latex': latex(simplified), 'steps': steps}
-    except Exception as e:
-        return {'error': str(e)}
-
-def find_fraction_inverse(frac_str, inv_type='mul', lang='en'):
-    try:
-        f = safe_sympify(frac_str)
-        n, d = f.as_numer_denom()
-        
-        steps = [f"Fraction: ${latex(f)}$"]
-        
-        if inv_type == 'mul': # Multiplicative Inverse
-            inv = 1/f
-            steps.append(f"Multiplicative Inverse: Flip numerator and denominator.")
-            steps.append(f"Inverse: $\\frac{{{latex(d)}}}{{{latex(n)}}}$")
-            
-            # Domain: R - {zeros of n AND zeros of d}
-            bad = solve(n) + solve(d)
-            bad_str = ', '.join([latex(b) for b in bad])
-            steps.append(f"Domain: $\\mathbb{{R}} - \\{{ {bad_str} \\}}$")
-            
-        else: # Additive Inverse
-            inv = -f
-            steps.append(f"Additive Inverse: Change sign.")
-            steps.append(f"Inverse: $-\\frac{{{latex(n)}}}{{{latex(d)}}}$")
-            
-            # Domain: Same as original
-            bad = solve(d)
-            bad_str = ', '.join([latex(b) for b in bad])
-            steps.append(f"Domain: $\\mathbb{{R}} - \\{{ {bad_str} \\}}$")
-            
-        return {'latex': latex(simplify(inv)), 'steps': steps}
-    except Exception as e:
-        return {'error': str(e)}
-
-def stratified_sample(total_pop, stratum_size, sample_size, lang='en'):
-    try:
-        N = int(total_pop)
-        Ni = int(stratum_size)
-        n = int(sample_size)
-        
-        steps = [
-            f"Total Population ($N$) = {N}",
-            f"Stratum Size ($N_i$) = {Ni}",
-            f"Total Sample Size ($n$) = {n}",
-            f"Formula: $n_i = \\frac{{N_i}}{{N}} \\times n$"
-        ]
-        
-        ni = (Ni / N) * n
-        steps.append(f"Calc: $\\frac{{{Ni}}}{{{N}}} \\times {n} = {ni}$")
-        
-        return {'result': round(ni), 'steps': steps}
-    except Exception as e:
-        return {'error': str(e)}
-
-def probability_laws(pa, pb, p_int, lang='en'):
-    try:
-        pa, pb, p_int = float(pa), float(pb), float(p_int)
-        steps = [f"$P(A) = {pa}$, $P(B) = {pb}$, $P(A \\cap B) = {p_int}$"]
-        
-        # P(A U B) = P(A) + P(B) - P(A n B)
-        p_union = pa + pb - p_int
-        steps.append(f"Union $P(A \\cup B) = P(A) + P(B) - P(A \\cap B) = {pa} + {pb} - {p_int} = {round(p_union, 4)}$")
-        
-        # P(A') = 1 - P(A)
-        p_comp_a = 1 - pa
-        steps.append(f"Complement $P(A') = 1 - P(A) = 1 - {pa} = {round(p_comp_a, 4)}$")
-        
-        # P(A - B) = P(A) - P(A n B)
-        p_diff = pa - p_int
-        steps.append(f"Difference $P(A - B) = P(A) - P(A \\cap B) = {pa} - {p_int} = {round(p_diff, 4)}$")
-        
-        return {
-            'union': round(p_union, 4), 
-            'comp_a': round(p_comp_a, 4),
-            'diff': round(p_diff, 4),
-            'steps': steps
-        }
-    except Exception as e:
-        return {'error': str(e)}
-
-def solve_circle_angles(angle_type, value, lang='en'):
-    try:
-        val = float(value)
-        steps = []
-        
-        central = 0
-        inscribed = 0
-        tangent = 0 # Angle between tangent and chord
-        
-        if angle_type == 'central':
-            central = val
-            steps.append(f"Given Central Angle = ${val}^\\circ$")
-            inscribed = val / 2
-            tangent = val / 2
-            steps.append(f"Inscribed Angle = $\\frac{{1}}{{2}} \\times \\text{{Central}} = \\frac{{{val}}}{{2}} = {inscribed}^\\circ$")
-            steps.append(f"Tangent-Chord Angle = $\\frac{{1}}{{2}} \\times \\text{{Central}} = {tangent}^\\circ$")
-            
-        elif angle_type == 'inscribed':
-            inscribed = val
-            steps.append(f"Given Inscribed Angle = ${val}^\\circ$")
-            central = val * 2
-            tangent = val
-            steps.append(f"Central Angle = $2 \\times \\text{{Inscribed}} = 2 \\times {val} = {central}^\\circ$")
-            steps.append(f"Tangent-Chord Angle = Inscribed Angle = ${tangent}^\\circ$")
-            
-        elif angle_type == 'tangent':
-            tangent = val
-            steps.append(f"Given Tangent-Chord Angle = ${val}^\\circ$")
-            central = val * 2
-            inscribed = val
-            steps.append(f"Central Angle = $2 \\times \\text{{Tangent}} = 2 \\times {val} = {central}^\\circ$")
-            steps.append(f"Inscribed Angle = Tangent-Chord Angle = ${inscribed}^\\circ$")
-            
-        return {
-            'central': central,
-            'inscribed': inscribed,
-            'tangent': tangent,
-            'steps': steps
-        }
-    except Exception as e:
-        return {'error': str(e)}
-        return {'error': str(e)}
-
-def stratified_sample(total_pop, stratum_size, sample_size, lang='en'):
-    try:
-        N = int(total_pop)
-        Ni = int(stratum_size)
-        n = int(sample_size)
-        
-        steps = [
-            f"Total Population ($N$) = {N}",
-            f"Stratum Size ($N_i$) = {Ni}",
-            f"Total Sample Size ($n$) = {n}",
-            f"Formula: $n_i = \\frac{{N_i}}{{N}} \\times n$"
-        ]
-        
-        ni = (Ni / N) * n
-        steps.append(f"Calc: $\\frac{{{Ni}}}{{{N}}} \\times {n} = {ni}$")
-        
-        return {'result': round(ni), 'steps': steps}
-    except Exception as e:
-        return {'error': str(e)}
-
-def probability_laws(pa, pb, p_int, lang='en'):
-    try:
-        pa, pb, p_int = float(pa), float(pb), float(p_int)
-        steps = [f"$P(A) = {pa}$, $P(B) = {pb}$, $P(A \\cap B) = {p_int}$"]
-        
-        # P(A U B) = P(A) + P(B) - P(A n B)
-        p_union = pa + pb - p_int
-        steps.append(f"Union $P(A \\cup B) = P(A) + P(B) - P(A \\cap B) = {pa} + {pb} - {p_int} = {round(p_union, 4)}$")
-        
-        # P(A') = 1 - P(A)
-        p_comp_a = 1 - pa
-        steps.append(f"Complement $P(A') = 1 - P(A) = 1 - {pa} = {round(p_comp_a, 4)}$")
-        
-        # P(A - B) = P(A) - P(A n B)
-        p_diff = pa - p_int
-        steps.append(f"Difference $P(A - B) = P(A) - P(A \\cap B) = {pa} - {p_int} = {round(p_diff, 4)}$")
-        
-        return {
-            'union': round(p_union, 4), 
-            'comp_a': round(p_comp_a, 4),
-            'diff': round(p_diff, 4),
-            'steps': steps
-        }
     except Exception as e:
         return {'error': str(e)}

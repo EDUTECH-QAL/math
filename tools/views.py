@@ -73,12 +73,20 @@ class CalculatorAPI(View):
             lang = request.session.get('lang', 'en')
             result = calculate_expression(expression, config=config, lang=lang)
             return JsonResponse(result)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+            return JsonResponse({'error': str(e)}, status=500)
 
 class GeometryAPI(View):
+    def get(self, request):
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
     def post(self, request):
         try:
+            if not request.body:
+                 return JsonResponse({'error': 'Empty request body'}, status=400)
+                 
             data = json.loads(request.body)
             mode = data.get('mode')
             lang = request.session.get('lang', 'en')
@@ -124,8 +132,10 @@ class GeometryAPI(View):
                 return JsonResponse({'error': 'Invalid mode'}, status=400)
                 
             return JsonResponse(result)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+            return JsonResponse({'error': str(e)}, status=500)
 
 class ProbabilityAPI(View):
     def post(self, request):
@@ -151,8 +161,10 @@ class ProbabilityAPI(View):
                 return JsonResponse({'error': 'Invalid type'}, status=400)
                 
             return JsonResponse(result)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+            return JsonResponse({'error': str(e)}, status=500)
 
 
 class SolverAPI(View):
@@ -207,5 +219,7 @@ class SolverAPI(View):
                 result = solve_equation_step_by_step(equation, lang=lang)
                 
             return JsonResponse(result)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+            return JsonResponse({'error': str(e)}, status=500)
