@@ -1,6 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.http import Http404, JsonResponse
+from django.core.cache import cache
+import hashlib
+import json
 from .models import Tool, GradeTool
 from grades.models import Grade
 from .engine import (
@@ -10,9 +13,18 @@ from .engine import (
     solve_linear_system_steps, solve_mixed_system_steps, find_polynomial_zeros, 
     simplify_algebraic_fraction, operate_algebraic_fractions, find_fraction_inverse,
     stratified_sample, probability_laws, circle_position_analyzer, cyclic_quad_check,
-    sexagesimal_convert, midpoint_slope_calc, circle_tangent_calc
+    sexagesimal_convert, midpoint_slope_calc, circle_tangent_calc, solve_circle_angles
 )
-import json
+
+def get_cache_key(prefix, data, lang):
+    """Generate a unique cache key based on input data and language."""
+    try:
+        # Sort keys to ensure consistent JSON string
+        data_str = json.dumps(data, sort_keys=True)
+        key_hash = hashlib.md5(f"{data_str}:{lang}".encode('utf-8')).hexdigest()
+        return f"{prefix}:{key_hash}"
+    except Exception:
+        return None
 
 class ToolView(View):
     def get(self, request, tool_slug):
@@ -66,12 +78,23 @@ class CalculatorAPI(View):
             if grade_id:
                 # In a real app, cache this lookup
                 # For MVP, we'll try to find the Calc tool config for this grade
-                # This part assumes 'smart-calculator' slug or similar. 
-                # Better: pass tool_id in API, but for simplicity:
                 pass 
 
             lang = request.session.get('lang', 'en')
+            
+            # Check cache
+            cache_key = get_cache_key('calc', data, lang)
+            if cache_key:
+                cached_result = cache.get(cache_key)
+                if cached_result:
+                    return JsonResponse(cached_result)
+
             result = calculate_expression(expression, config=config, lang=lang)
+            
+            # Set cache (24 hours)
+            if cache_key:
+                cache.set(cache_key, result, timeout=86400)
+                
             return JsonResponse(result)
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
@@ -90,6 +113,13 @@ class GeometryAPI(View):
             data = json.loads(request.body)
             mode = data.get('mode')
             lang = request.session.get('lang', 'en')
+            
+            # Check cache
+            cache_key = get_cache_key('geo', data, lang)
+            if cache_key:
+                cached_result = cache.get(cache_key)
+                if cached_result:
+                    return JsonResponse(cached_result)
             
             if mode == 'area':
                 shape = data.get('shape')
@@ -131,6 +161,10 @@ class GeometryAPI(View):
             else:
                 return JsonResponse({'error': 'Invalid mode'}, status=400)
                 
+            # Set cache (24 hours)
+            if cache_key:
+                cache.set(cache_key, result, timeout=86400)
+
             return JsonResponse(result)
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
@@ -143,6 +177,9 @@ class ProbabilityAPI(View):
             data = json.loads(request.body)
             sim_type = data.get('type')
             lang = request.session.get('lang', 'en')
+            
+            # Probability simulations (coin, dice, cards) are random, so NO CACHING for them.
+            # But stratified sample and laws are deterministic.
             
             if sim_type in ['coin', 'dice', 'cards']:
                 trials = data.get('trials', 1)
@@ -174,6 +211,13 @@ class SolverAPI(View):
             mode = data.get('mode', 'solve') # solve, expand, divide
             lang = request.session.get('lang', 'en')
             
+            # Check cache
+            cache_key = get_cache_key('solver', data, lang)
+            if cache_key:
+                cached_result = cache.get(cache_key)
+                if cached_result:
+                    return JsonResponse(cached_result)
+
             if mode == 'expand':
                 expression = data.get('expression')
                 result = expand_algebraic_expression(expression, lang=lang)
@@ -217,6 +261,10 @@ class SolverAPI(View):
             else:
                 equation = data.get('equation')
                 result = solve_equation_step_by_step(equation, lang=lang)
+                
+            # Set cache (24 hours)
+            if cache_key:
+                cache.set(cache_key, result, timeout=86400)
                 
             return JsonResponse(result)
         except json.JSONDecodeError:

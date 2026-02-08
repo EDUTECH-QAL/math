@@ -4,6 +4,7 @@ from sympy.parsing.sympy_parser import parse_expr, standard_transformations, imp
 import random
 import math
 import math as m
+import re
 
 def sanitize_expression(expr_str):
     """
@@ -18,6 +19,15 @@ def sanitize_expression(expr_str):
     expr_str = expr_str.replace('÷', '/')
     # Replace multiplication symbol (if used)
     expr_str = expr_str.replace('×', '*')
+    
+    # Handle absolute value |x| -> Abs(x)
+    # Match |...| content, avoiding nested issues for simple cases
+    # We use a loop to handle multiple occurrences
+    if '|' in expr_str:
+        # Regex to match | content |
+        # We use [^|]+ to match anything except another pipe
+        expr_str = re.sub(r'\|([^|]+)\|', r'Abs(\1)', expr_str)
+        
     return expr_str
 
 def safe_sympify(expr_str):
