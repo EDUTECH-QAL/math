@@ -4,12 +4,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{% if request.session.lang == 'ar' %}منصة تعليمية ذكية للأدوات الرياضية وحل المعادلات والمسائل الهندسية للمرحلة الإعدادية والثانوية.{% else %}Smart educational platform for math tools, equation solving, and geometry problems for preparatory and secondary stages.{% endif %}">
     <title>{% block title %}Smart Math Tools{% endblock %}</title>
     <link rel="icon" type="image/x-icon" href="{% static 'core/images/favicon.ico' %}">
+    
+    <!-- Preconnect to CDNs -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    
     <!-- Tailwind CSS (via CDN for MVP) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
     
     <script>
         tailwind.config = {
@@ -19,14 +28,17 @@
                         primary: '#4F46E5', // Indigo 600
                         secondary: '#10B981', // Emerald 500
                         dark: '#1F2937',
+                        gray: {
+                            600: '#4B5563', // Ensure sufficient contrast
+                            700: '#374151',
+                            800: '#1F2937',
+                        }
                     }
                 }
             }
         }
     </script>
     <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
     <style>
