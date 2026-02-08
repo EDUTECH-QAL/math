@@ -76,15 +76,6 @@
         .delay-200 { animation-delay: 0.2s; }
         .delay-300 { animation-delay: 0.3s; }
     </style>
-    <!-- MathJax Configuration -->
-    <script>
-    MathJax = {
-      tex: {
-        inlineMath: [['$', '$'], ['\\(', '\\)']]
-      }
-    };
-    </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 flex flex-col min-h-screen">
 
@@ -148,6 +139,33 @@
                     {% else %}
                     (Qalyubia Education Tech Team)
                     {% endif %}
+                </p>
+                <p class="text-gray-600 text-xs mt-4">
+                    &copy; {% now "Y" %} Smart Math Tools Platform. All rights reserved.
+                </p>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Deferred MathJax -->
+    <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']]
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+      },
+      startup: {
+        pageReady: () => {
+          return MathJax.startup.defaultPageReady();
+        }
+      }
+    };
+    </script>
+    <script id="MathJax-script" defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</body>
+</html>                    {% endif %}
                 </p>
             </div>
             
