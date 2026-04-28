@@ -267,8 +267,8 @@
             document.getElementById('lbl-single').innerText = '{% if request.session.lang == "ar" %}اكتب المعادلة أو المتباينة{% else %}Enter Equation or Inequality{% endif %}';
             document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}حل المشكلة{% else %}Solve{% endif %}';
             if (mf) { 
-                mf.placeholder = "x^2 - 5x + 6 = 0";
-                mf.setValue('x^2 - 5x + 6 = 0');
+                mf.placeholder = "2x - 4 \\le 10";
+                mf.setValue('2x - 4 \\le 10');
             }
         } else if (mode === 'quadratic') {
             document.getElementById('tab-quadratic').className = tabClassActive;
@@ -321,23 +321,31 @@
             document.getElementById('lbl-double-1').innerText = '{% if request.session.lang == "ar" %}المقسوم (Dividend){% else %}Dividend P(x){% endif %}';
             document.getElementById('lbl-double-2').innerText = '{% if request.session.lang == "ar" %}المقسوم عليه (Divisor){% else %}Divisor D(x){% endif %}';
             document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}أجرِ القسمة{% else %}Divide{% endif %}';
+            if (mfDividend) { mfDividend.setValue('x^3 + 2x^2 - 5x - 6'); }
+            if (mfDivisor) { mfDivisor.setValue('x - 2'); }
         } else if (mode === 'linear_system') {
             document.getElementById('tab-linear_system').className = tabClassActive;
             document.getElementById('input-double').classList.remove('hidden');
             document.getElementById('lbl-double-1').innerText = '{% if request.session.lang == "ar" %}المعادلة الأولى{% else %}Equation 1{% endif %}';
             document.getElementById('lbl-double-2').innerText = '{% if request.session.lang == "ar" %}المعادلة الثانية{% else %}Equation 2{% endif %}';
             document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}حل النظام{% else %}Solve System{% endif %}';
+            if (mfDividend) { mfDividend.setValue('2x + y = 7'); }
+            if (mfDivisor) { mfDivisor.setValue('x - y = 2'); }
         } else if (mode === 'mixed_system') {
             document.getElementById('tab-mixed_system').className = tabClassActive;
             document.getElementById('input-double').classList.remove('hidden');
             document.getElementById('lbl-double-1').innerText = '{% if request.session.lang == "ar" %}المعادلة الخطية{% else %}Linear Equation{% endif %}';
             document.getElementById('lbl-double-2').innerText = '{% if request.session.lang == "ar" %}المعادلة التربيعية{% else %}Quadratic Equation{% endif %}';
             document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}حل النظام{% else %}Solve System{% endif %}';
+            if (mfDividend) { mfDividend.setValue('y = x + 1'); }
+            if (mfDivisor) { mfDivisor.setValue('y = x^2 - 1'); }
         } else if (mode === 'fractions') {
             document.getElementById('tab-fractions').className = tabClassActive;
             document.getElementById('input-fraction-op').classList.remove('hidden');
             updateFractionOp();
             document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}احسب{% else %}Calculate{% endif %}';
+            if (mfFrac1) { mfFrac1.setValue('(x^2 - 4)/(x+2)'); }
+            if (mfFrac2) { mfFrac2.setValue('(x+3)/(x-1)'); }
         }
     }
 
