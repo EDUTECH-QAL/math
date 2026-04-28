@@ -361,14 +361,52 @@ def solve_inequality_steps(ineq_str, lang='en'):
         return {'error': str(e)}
 
 def convert_scientific_notation(value_str, lang='en'):
+    phrases = {
+        'en': {
+            'value': 'Original Value',
+            'scientific': 'Scientific Notation',
+            'decimal': 'Decimal Form'
+        },
+        'ar': {
+            'value': 'القيمة الأصلية',
+            'scientific': 'الصورة القياسية (العلمية)',
+            'decimal': 'الصورة العشرية'
+        }
+    }
+    t = phrases.get(lang, phrases['en'])
     try:
-        val = float(value_str)
+        # Check if the input is in scientific notation already (e.g., 5e-4 or 5*10^-4)
+        clean_str = str(value_str).replace('\\times', '*').replace('^', '**').replace('{', '').replace('}', '')
+        
+        # Try to parse using sympy for expressions like 5*10**-4
+        val_expr = safe_sympify(clean_str)
+        val = float(val_expr.evalf())
+        
         sci = "{:.2e}".format(val)
         base, exponent = sci.split('e')
+        # Remove trailing zeros from base
+        base = float(base)
+        if base == int(base):
+            base = int(base)
+        
         latex_sci = f"{base} \\times 10^{{{int(exponent)}}}"
-        return {'latex': latex_sci, 'steps': [f"Value: {val}", f"Scientific: ${latex_sci}$"]}
+        
+        # Format decimal form to avoid scientific notation
+        if abs(val) < 1 and val != 0:
+            decimal_form = f"{val:.10f}".rstrip('0').rstrip('.')
+        else:
+            decimal_form = f"{val:g}"
+            
+        steps = [
+            f"{t['value']}: ${latex(val_expr)}$",
+            f"{t['decimal']}: {decimal_form}",
+            f"{t['scientific']}: ${latex_sci}$"
+        ]
+        return {'latex': latex_sci, 'steps': steps}
     except Exception as e:
-        return {'error': str(e)}
+        if lang == 'ar':
+            return {'error': "خطأ: تعذر تحويل القيمة. تأكد من إدخال رقم صحيح أو صيغة رياضية صالحة."}
+        return {'error': f"Error: could not convert value. {str(e)}"}
 
 def factorize_expression_steps(expression_str, lang='en'):
     phrases = {

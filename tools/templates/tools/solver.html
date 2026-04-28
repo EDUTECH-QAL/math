@@ -281,6 +281,7 @@
             document.getElementById('input-single').classList.remove('hidden');
             document.getElementById('lbl-single').innerText = '{% if request.session.lang == "ar" %}اكتب الرقم أو الصيغة العلمية{% else %}Enter Number or Scientific Notation{% endif %}';
             document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}تحويل{% else %}Convert{% endif %}';
+            if (mf) { mf.setValue('0.0005'); }
         } else if (mode === 'factorize') {
             document.getElementById('tab-factorize').className = tabClassActive;
             document.getElementById('input-single').classList.remove('hidden');
