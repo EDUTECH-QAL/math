@@ -1,0 +1,1094 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="bg-indigo-900 py-6 border-b border-indigo-800 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center">
+        <a href="{% url 'core:dashboard' %}" class="flex items-center gap-2 text-indigo-200 hover:text-white transition font-medium">
+            <i class="fa-solid fa-arrow-left rtl:rotate-180"></i>
+            {% if request.session.lang == 'ar' %}العودة للوحة التحكم{% else %}Back to Dashboard{% endif %}
+        </a>
+        <h1 class="text-xl font-bold text-white flex items-center gap-2">
+            <i class="fa-solid {{ tool.icon_name|default:'fa-shapes' }}"></i>
+            {% if request.session.lang == 'ar' %}{{ tool.name_ar }}{% else %}{{ tool.name_en }}{% endif %}
+        </h1>
+        <div class="w-20"></div>
+    </div>
+</div>
+
+<div class="min-h-screen bg-gray-50 flex flex-col font-sans">
+    
+    <!-- Main Content -->
+    <div class="flex-1 max-w-6xl mx-auto w-full p-4 sm:p-8">
+        
+        <!-- Tool Content -->
+        <div class="bg-white rounded-3xl shadow-xl border border-gray-200 p-6">
+            
+            <!-- Area Calculators -->
+            <div id="panel-area" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Square via Diagonal -->
+                    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-8 rounded-3xl border border-blue-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-blue-600 text-2xl shadow-sm mb-6">
+                            <i class="fa-regular fa-square"></i>
+                        </div>
+                        
+                        <h3 class="text-xl font-bold text-blue-900 mb-2">
+                            {% if request.session.lang == 'ar' %}مساحة المربع{% else %}Square Area{% endif %}
+                        </h3>
+                        <p class="text-blue-600/80 text-sm mb-6 font-medium">
+                            {% if request.session.lang == 'ar' %}باستخدام طول القطر{% else %}Using Diagonal Length{% endif %}
+                        </p>
+
+                        <div class="bg-white/60 p-4 rounded-xl border border-blue-100 mb-6 text-center font-mono text-blue-700 font-bold text-lg">
+                            Area = 0.5 × d²
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-500 mb-2">{% if request.session.lang == 'ar' %}طول القطر (d){% else %}Diagonal Length (d){% endif %}</label>
+                                <input type="number" id="area-sq-d" class="w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500 py-3 text-lg font-bold text-center" placeholder="0">
+                            </div>
+                            <button onclick="calcSquareArea()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition shadow-md">
+                                {% if request.session.lang == 'ar' %}احسب المساحة{% else %}Calculate Area{% endif %}
+                            </button>
+                            <div id="res-sq" class="hidden text-center text-3xl font-bold text-blue-800 mt-4 py-4 bg-white rounded-xl border border-blue-100 shadow-inner"></div>
+                        </div>
+                    </div>
+
+                    <!-- Trapezoid via Median Base -->
+                    <div class="bg-gradient-to-br from-purple-50 to-fuchsia-50 p-8 rounded-3xl border border-purple-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-purple-600 text-2xl shadow-sm mb-6">
+                            <i class="fa-solid fa-draw-polygon"></i>
+                        </div>
+                        
+                        <h3 class="text-xl font-bold text-purple-900 mb-2">
+                            {% if request.session.lang == 'ar' %}مساحة شبه المنحرف{% else %}Trapezoid Area{% endif %}
+                        </h3>
+                        
+                        <!-- Toggle Method -->
+                        <div class="flex bg-purple-100 p-1 rounded-lg mb-4">
+                            <button onclick="toggleTrapMethod('median')" id="btn-trap-median" class="flex-1 py-1 rounded-md text-sm font-bold bg-white text-purple-700 shadow-sm transition">
+                                {% if request.session.lang == 'ar' %}القاعدة المتوسطة{% else %}Median{% endif %}
+                            </button>
+                            <button onclick="toggleTrapMethod('bases')" id="btn-trap-bases" class="flex-1 py-1 rounded-md text-sm font-bold text-purple-500 hover:text-purple-700 transition">
+                                {% if request.session.lang == 'ar' %}القاعدتين{% else %}Bases{% endif %}
+                            </button>
+                        </div>
+
+                        <div id="formula-trap-median" class="bg-white/60 p-4 rounded-xl border border-purple-100 mb-6 text-center font-mono text-purple-700 font-bold text-lg">
+                            Area = Median × Height
+                        </div>
+                        <div id="formula-trap-bases" class="hidden bg-white/60 p-4 rounded-xl border border-purple-100 mb-6 text-center font-mono text-purple-700 font-bold text-lg">
+                            Area = 0.5(b₁ + b₂) × h
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div id="inputs-trap-median">
+                                <label class="block text-sm font-bold text-gray-500 mb-2">{% if request.session.lang == 'ar' %}القاعدة المتوسطة (m){% else %}Median (m){% endif %}</label>
+                                <input type="number" id="area-trap-m" class="w-full rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500 py-3 text-lg font-bold text-center mb-4" placeholder="0">
+                            </div>
+                            
+                            <div id="inputs-trap-bases" class="hidden grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-500 mb-2">b₁</label>
+                                    <input type="number" id="area-trap-b1" class="w-full rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500 py-3 text-lg font-bold text-center" placeholder="0">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-500 mb-2">b₂</label>
+                                    <input type="number" id="area-trap-b2" class="w-full rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500 py-3 text-lg font-bold text-center" placeholder="0">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-gray-500 mb-2">{% if request.session.lang == 'ar' %}الارتفاع (h){% else %}Height (h){% endif %}</label>
+                                <input type="number" id="area-trap-h" class="w-full rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500 py-3 text-lg font-bold text-center" placeholder="0">
+                            </div>
+
+                            <button onclick="calcTrapArea()" class="w-full bg-purple-600 text-white font-bold py-3 rounded-xl hover:bg-purple-700 transition shadow-md">
+                                {% if request.session.lang == 'ar' %}احسب المساحة{% else %}Calculate Area{% endif %}
+                            </button>
+                            <div id="res-trap" class="hidden space-y-2 mt-4"></div>
+                        </div>
+                    </div>
+
+                    <!-- Rhombus via Diagonals -->
+                    <div class="bg-gradient-to-br from-teal-50 to-emerald-50 p-8 rounded-3xl border border-teal-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-teal-600 text-2xl shadow-sm mb-6">
+                            <i class="fa-solid fa-shapes"></i>
+                        </div>
+                        
+                        <h3 class="text-xl font-bold text-teal-900 mb-2">
+                            {% if request.session.lang == 'ar' %}مساحة المعين{% else %}Rhombus Area{% endif %}
+                        </h3>
+                        <p class="text-teal-600/80 text-sm mb-6 font-medium">
+                            {% if request.session.lang == 'ar' %}باستخدام طولي القطرين{% else %}Using Diagonals{% endif %}
+                        </p>
+
+                        <div class="bg-white/60 p-4 rounded-xl border border-teal-100 mb-6 text-center font-mono text-teal-700 font-bold text-lg">
+                            Area = 0.5 × d₁ × d₂
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-500 mb-2">{% if request.session.lang == 'ar' %}القطر 1 (d₁){% else %}Diagonal 1{% endif %}</label>
+                                    <input type="number" id="area-rhomb-d1" class="w-full rounded-xl border-gray-300 focus:border-teal-500 focus:ring-teal-500 py-3 text-lg font-bold text-center" placeholder="0">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-500 mb-2">{% if request.session.lang == 'ar' %}القطر 2 (d₂){% else %}Diagonal 2{% endif %}</label>
+                                    <input type="number" id="area-rhomb-d2" class="w-full rounded-xl border-gray-300 focus:border-teal-500 focus:ring-teal-500 py-3 text-lg font-bold text-center" placeholder="0">
+                                </div>
+                            </div>
+                            <button onclick="calcRhombArea()" class="w-full bg-teal-600 text-white font-bold py-3 rounded-xl hover:bg-teal-700 transition shadow-md">
+                                {% if request.session.lang == 'ar' %}احسب المساحة{% else %}Calculate Area{% endif %}
+                            </button>
+                            <div id="res-rhomb" class="hidden text-center text-3xl font-bold text-teal-800 mt-4 py-4 bg-white rounded-xl border border-teal-100 shadow-inner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Grade 9 Analytic Geometry Section -->
+            <div id="section-analytic" class="mt-12 grade9-tool hidden">
+                <div class="bg-white rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8">
+                     <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-600">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                        {% if request.session.lang == 'ar' %}الهندسة التحليلية{% else %}Analytic Geometry{% endif %}
+                     </h2>
+                     
+                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                         <!-- Midpoint & Slope -->
+                         <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                             <h3 class="font-bold text-lg text-gray-700 mb-4">
+                                 {% if request.session.lang == 'ar' %}الميل ونقطة المنتصف{% else %}Slope & Midpoint{% endif %}
+                             </h3>
+                             <div class="grid grid-cols-2 gap-2 mb-2">
+                                 <input type="number" id="an-x1" class="p-2 rounded border text-center" placeholder="x1">
+                                 <input type="number" id="an-y1" class="p-2 rounded border text-center" placeholder="y1">
+                                 <input type="number" id="an-x2" class="p-2 rounded border text-center" placeholder="x2">
+                                 <input type="number" id="an-y2" class="p-2 rounded border text-center" placeholder="y2">
+                             </div>
+                             <div class="flex gap-2">
+                                 <button onclick="calcAnalytic('slope')" class="flex-1 bg-cyan-600 text-white py-2 rounded hover:bg-cyan-700">{% if request.session.lang == 'ar' %}الميل{% else %}Slope{% endif %}</button>
+                                 <button onclick="calcAnalytic('midpoint')" class="flex-1 bg-cyan-600 text-white py-2 rounded hover:bg-cyan-700">{% if request.session.lang == 'ar' %}المنتصف{% else %}Midpoint{% endif %}</button>
+                             </div>
+                             <div id="res-analytic" class="mt-2 hidden"></div>
+                         </div>
+                         
+                         <!-- Sexagesimal Converter -->
+                         <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                             <h3 class="font-bold text-lg text-gray-700 mb-4">
+                                 {% if request.session.lang == 'ar' %}القياس الستيني{% else %}Sexagesimal Degrees{% endif %}
+                             </h3>
+                             <div class="flex gap-1 mb-2">
+                                 <input type="number" id="sex-d" class="w-1/3 p-2 rounded border text-center" placeholder="Deg">
+                                 <input type="number" id="sex-m" class="w-1/3 p-2 rounded border text-center" placeholder="Min">
+                                 <input type="number" id="sex-s" class="w-1/3 p-2 rounded border text-center" placeholder="Sec">
+                             </div>
+                             <button onclick="calcSexagesimal()" class="w-full bg-cyan-600 text-white py-2 rounded hover:bg-cyan-700 mb-2">
+                                 {% if request.session.lang == 'ar' %}تحويل لعشري{% else %}To Decimal{% endif %}
+                             </button>
+                             
+                             <div class="relative flex py-2 items-center">
+                                 <div class="flex-grow border-t border-gray-300"></div>
+                                 <span class="flex-shrink-0 mx-4 text-gray-400 text-xs">OR</span>
+                                 <div class="flex-grow border-t border-gray-300"></div>
+                             </div>
+                             
+                             <input type="number" id="sex-dec" class="w-full p-2 rounded border text-center mb-2" placeholder="Decimal Degrees" step="any">
+                              <button onclick="calcSexagesimalReverse()" class="w-full bg-cyan-600 text-white py-2 rounded hover:bg-cyan-700">
+                                 {% if request.session.lang == 'ar' %}تحويل لستيني{% else %}To DMS{% endif %}
+                             </button>
+                             
+                             <div id="res-sex" class="mt-2 hidden"></div>
+                         </div>
+                     </div>
+                </div>
+            </div>
+
+            <!-- Transformations Section -->
+            <div id="section-transform" class="mt-12">
+                <div class="bg-white rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8">
+                     <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                            <i class="fa-solid fa-arrows-to-circle"></i>
+                        </div>
+                        {% if request.session.lang == 'ar' %}التحويلات الهندسية{% else %}Geometry Transformations{% endif %}
+                     </h2>
+                     
+                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                         <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                             <h3 class="font-bold text-lg text-gray-700 mb-4">
+                                 {% if request.session.lang == 'ar' %}تحويل نقطة{% else %}Transform a Point{% endif %}
+                             </h3>
+                             <div class="grid grid-cols-2 gap-2 mb-4">
+                                 <input type="number" id="tr-x" class="p-2 rounded border text-center" placeholder="x">
+                                 <input type="number" id="tr-y" class="p-2 rounded border text-center" placeholder="y">
+                             </div>
+                             <div class="flex gap-2 mb-4">
+                                 <button onclick="setTransform('translate')" id="btn-tr-translate" class="flex-1 px-3 py-2 rounded bg-green-100 text-green-700 font-bold">Translate</button>
+                                 <button onclick="setTransform('rotate')" id="btn-tr-rotate" class="flex-1 px-3 py-2 rounded hover:bg-gray-100 text-gray-600 font-bold">Rotate</button>
+                                 <button onclick="setTransform('reflect')" id="btn-tr-reflect" class="flex-1 px-3 py-2 rounded hover:bg-gray-100 text-gray-600 font-bold">Reflect</button>
+                                 <button onclick="setTransform('scale')" id="btn-tr-scale" class="flex-1 px-3 py-2 rounded hover:bg-gray-100 text-gray-600 font-bold">Scale</button>
+                             </div>
+                             
+                             <div id="tr-params" class="space-y-2 mb-4">
+                                 <div id="tr-translate" class="grid grid-cols-2 gap-2">
+                                     <input type="number" id="tr-dx" class="p-2 rounded border text-center" placeholder="dx">
+                                     <input type="number" id="tr-dy" class="p-2 rounded border text-center" placeholder="dy">
+                                 </div>
+                                 <div id="tr-rotate" class="hidden grid grid-cols-2 gap-2">
+                                     <input type="number" id="tr-angle" class="p-2 rounded border text-center" placeholder="deg">
+                                     <input type="number" id="tr-cx" class="p-2 rounded border text-center" placeholder="cx">
+                                     <input type="number" id="tr-cy" class="p-2 rounded border text-center" placeholder="cy">
+                                 </div>
+                                 <div id="tr-reflect" class="hidden">
+                                     <select id="tr-axis" class="w-full p-2 rounded border">
+                                         <option value="x">x-axis</option>
+                                         <option value="y">y-axis</option>
+                                         <option value="y=x">y = x</option>
+                                         <option value="y=-x">y = -x</option>
+                                     </select>
+                                 </div>
+                                 <div id="tr-scale" class="hidden grid grid-cols-2 gap-2">
+                                     <input type="number" id="tr-k" class="p-2 rounded border text-center" placeholder="k">
+                                     <input type="number" id="tr-cx2" class="p-2 rounded border text-center" placeholder="cx">
+                                     <input type="number" id="tr-cy2" class="p-2 rounded border text-center" placeholder="cy">
+                                 </div>
+                             </div>
+                             
+                             <button onclick="calcTransform()" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">
+                                 {% if request.session.lang == 'ar' %}تنفيذ التحويل{% else %}Apply Transformation{% endif %}
+                             </button>
+                             <div id="res-transform" class="mt-2 hidden"></div>
+                         </div>
+                     </div>
+                </div>
+            </div>
+            <!-- Grade 9 Circle Geometry Section -->
+            <div id="section-circle" class="mt-12 grade9-tool hidden">
+                <div class="bg-white rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8">
+                     <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+                            <i class="fa-regular fa-circle"></i>
+                        </div>
+                        {% if request.session.lang == 'ar' %}هندسة الدائرة{% else %}Circle Geometry{% endif %}
+                     </h2>
+                     
+                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                         <!-- Circle Position -->
+                         <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                             <h3 class="font-bold text-lg text-gray-700 mb-4">
+                                 {% if request.session.lang == 'ar' %}أوضاع الدائرة{% else %}Circle Positions{% endif %}
+                             </h3>
+                             <div class="space-y-2 mb-4">
+                                 <input type="number" id="circ-r" class="w-full p-2 rounded border" placeholder="{% if request.session.lang == 'ar' %}نصف القطر r{% else %}Radius r{% endif %}">
+                                 <input type="number" id="circ-dist" class="w-full p-2 rounded border" placeholder="{% if request.session.lang == 'ar' %}بعد المركز M{% else %}Distance M{% endif %}">
+                                 <select id="circ-type" class="w-full p-2 rounded border">
+                                     <option value="point">{% if request.session.lang == 'ar' %}نقطة{% else %}Point{% endif %}</option>
+                                     <option value="line">{% if request.session.lang == 'ar' %}مستقيم{% else %}Line{% endif %}</option>
+                                     <option value="circle">{% if request.session.lang == 'ar' %}دائرة أخرى (r2){% else %}Other Circle (r2){% endif %}</option>
+                                 </select>
+                                 <input type="number" id="circ-r2" class="w-full p-2 rounded border hidden" placeholder="{% if request.session.lang == 'ar' %}نصف قطر الدائرة الثانية{% else %}Radius 2{% endif %}">
+                             </div>
+                             <button onclick="calcCirclePos()" class="w-full bg-orange-600 text-white py-2 rounded hover:bg-orange-700">
+                                 {% if request.session.lang == 'ar' %}تحديد الوضع{% else %}Analyze{% endif %}
+                             </button>
+                             <div id="res-circle-pos" class="mt-2 hidden"></div>
+                         </div>
+                         
+                         <!-- Cyclic Quadrilateral -->
+                         <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                             <h3 class="font-bold text-lg text-gray-700 mb-4">
+                                 {% if request.session.lang == 'ar' %}الشكل الرباعي الدائري{% else %}Cyclic Quadrilateral{% endif %}
+                             </h3>
+                             <p class="text-sm text-gray-500 mb-2">{% if request.session.lang == 'ar' %}أدخل زاويتين متقابلتين{% else %}Enter two opposite angles{% endif %}</p>
+                             <div class="flex gap-2 mb-4">
+                                 <input type="number" id="cyc-a1" class="w-1/2 p-2 rounded border" placeholder="Angle A">
+                                 <input type="number" id="cyc-a2" class="w-1/2 p-2 rounded border" placeholder="Angle C">
+                             </div>
+                             <button onclick="calcCyclic()" class="w-full bg-orange-600 text-white py-2 rounded hover:bg-orange-700">
+                                 {% if request.session.lang == 'ar' %}تحقق{% else %}Check{% endif %}
+                             </button>
+                             <div id="res-cyclic" class="mt-2 hidden"></div>
+                         </div>
+                         
+                          <!-- Tangents -->
+                         <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                             <h3 class="font-bold text-lg text-gray-700 mb-4">
+                                 {% if request.session.lang == 'ar' %}المماسات{% else %}Tangents{% endif %}
+                             </h3>
+                             <div class="mb-4">
+                                 <label class="text-sm font-bold text-gray-500">{% if request.session.lang == 'ar' %}زاوية التقاطع{% else %}Intersection Angle{% endif %}</label>
+                                 <input type="number" id="tan-angle" class="w-full p-2 rounded border" placeholder="Deg">
+                             </div>
+                             <button onclick="calcTangent()" class="w-full bg-orange-600 text-white py-2 rounded hover:bg-orange-700">
+                                 {% if request.session.lang == 'ar' %}احسب زاوية القوس{% else %}Calc Arc Angle{% endif %}
+                             </button>
+                             <div id="res-tangent" class="mt-2 hidden"></div>
+                         </div>
+                         
+                         <!-- Circle Angles -->
+                         <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                             <h3 class="font-bold text-lg text-gray-700 mb-4">
+                                 {% if request.session.lang == 'ar' %}الزوايا والأقواس{% else %}Angles & Arcs{% endif %}
+                             </h3>
+                             <div class="mb-4">
+                                 <select id="ang-type" class="w-full p-2 rounded border mb-2">
+                                     <option value="central">{% if request.session.lang == 'ar' %}زاوية مركزية{% else %}Central Angle{% endif %}</option>
+                                     <option value="inscribed">{% if request.session.lang == 'ar' %}زاوية محيطية{% else %}Inscribed Angle{% endif %}</option>
+                                     <option value="tangent">{% if request.session.lang == 'ar' %}زاوية مماسية{% else %}Tangent Angle{% endif %}</option>
+                                 </select>
+                                 <input type="number" id="ang-val" class="w-full p-2 rounded border" placeholder="{% if request.session.lang == 'ar' %}قيمة الزاوية{% else %}Angle Value{% endif %}">
+                             </div>
+                             <button onclick="calcCircleAngles()" class="w-full bg-orange-600 text-white py-2 rounded hover:bg-orange-700">
+                                 {% if request.session.lang == 'ar' %}احسب الباقي{% else %}Calculate Others{% endif %}
+                             </button>
+                             <div id="res-angles" class="mt-2 hidden"></div>
+                         </div>
+                     </div>
+                </div>
+            </div>
+
+            <!-- Pythagoras Converse Section -->
+            <div id="section-converse" class="mt-12">
+                <div class="bg-white rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8">
+                     <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600">
+                            <i class="fa-solid fa-play fa-rotate-270"></i>
+                        </div>
+                        {% if request.session.lang == 'ar' %}عكس نظرية فيثاغورس{% else %}Pythagoras Converse Tool{% endif %}
+                     </h2>
+                     
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                        <div class="space-y-6">
+                            <p class="text-gray-600">
+                                {% if request.session.lang == 'ar' %}
+                                أدخل أطوال أضلاع المثلث الثلاثة لتحديد نوعه (قائم، حاد، أو منفرج الزاوية).
+                                {% else %}
+                                Enter the three side lengths of the triangle to determine its type (Right, Acute, or Obtuse).
+                                {% endif %}
+                            </p>
+                            
+                            <div class="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-500 mb-2">a</label>
+                                    <input type="number" id="conv-a" class="w-full rounded-xl border-gray-300 focus:border-pink-500 focus:ring-pink-500 py-3 text-lg font-bold text-center" placeholder="3">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-500 mb-2">b</label>
+                                    <input type="number" id="conv-b" class="w-full rounded-xl border-gray-300 focus:border-pink-500 focus:ring-pink-500 py-3 text-lg font-bold text-center" placeholder="4">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-500 mb-2">c</label>
+                                    <input type="number" id="conv-c" class="w-full rounded-xl border-gray-300 focus:border-pink-500 focus:ring-pink-500 py-3 text-lg font-bold text-center" placeholder="5">
+                                </div>
+                            </div>
+                            
+                            <button onclick="calcConverse()" class="w-full bg-pink-600 text-white font-bold py-3 rounded-xl hover:bg-pink-700 transition shadow-md">
+                                {% if request.session.lang == 'ar' %}تحديد نوع المثلث{% else %}Determine Type{% endif %}
+                            </button>
+                        </div>
+                        
+                        <div id="res-conv" class="hidden bg-gray-50 rounded-2xl border border-gray-200 p-6 min-h-[200px] flex flex-col items-center justify-center">
+                            <!-- Result will be loaded here -->
+                        </div>
+                     </div>
+                </div>
+            </div>
+
+            <!-- Interactive Lab Section -->
+            <div id="section-lab" class="mt-12">
+                <div class="bg-white rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8">
+                     <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                            <i class="fa-solid fa-flask"></i>
+                        </div>
+                        {% if request.session.lang == 'ar' %}معمل الهندسة التفاعلي{% else %}Geometry Interactive Lab{% endif %}
+                     </h2>
+                     
+                     <!-- Lab Tabs -->
+                     <div class="flex flex-wrap gap-2 mb-6 border-b border-gray-200 pb-2">
+                         <button onclick="setLabMode('parallelogram')" id="lab-tab-parallelogram" class="px-4 py-2 rounded-lg font-bold bg-indigo-100 text-indigo-700">
+                            {% if request.session.lang == 'ar' %}تساوي المساحات{% else %}Equal Areas{% endif %}
+                         </button>
+                         <button onclick="setLabMode('similarity')" id="lab-tab-similarity" class="px-4 py-2 rounded-lg font-bold hover:bg-gray-100 text-gray-600">
+                            {% if request.session.lang == 'ar' %}التشابه{% else %}Similarity{% endif %}
+                         </button>
+                         <button onclick="setLabMode('projections')" id="lab-tab-projections" class="px-4 py-2 rounded-lg font-bold hover:bg-gray-100 text-gray-600">
+                            {% if request.session.lang == 'ar' %}المساقط{% else %}Projections{% endif %}
+                         </button>
+                         <button onclick="setLabMode('euclid')" id="lab-tab-euclid" class="px-4 py-2 rounded-lg font-bold hover:bg-gray-100 text-gray-600">
+                            {% if request.session.lang == 'ar' %}نظرية إقليدس{% else %}Euclid's Theorem{% endif %}
+                         </button>
+                     </div>
+
+                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                         <!-- Lab Controls -->
+                         <div class="space-y-6" id="lab-controls">
+                             <!-- Controls injected via JS -->
+                         </div>
+                         
+                         <!-- Lab Canvas -->
+                         <div class="lg:col-span-2 bg-gray-50 rounded-2xl border border-gray-200 p-4 relative min-h-[400px] flex justify-center items-center overflow-hidden">
+                             <canvas id="lab-canvas" width="600" height="400" class="bg-white rounded-xl shadow-sm border border-gray-200"></canvas>
+                         </div>
+                     </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- API Helper ---
+    async function callGeometryAPI(payload, resId) {
+        const resEl = document.getElementById(resId);
+        resEl.classList.remove('hidden');
+        resEl.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-indigo-500 text-2xl"></i></div>';
+        
+        try {
+            const response = await fetch('{% url "tools:api_geometry" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            // Handle non-OK status codes manually to avoid JSON parse errors on HTML error pages
+            if (!response.ok) {
+                const text = await response.text();
+                // Try to see if it's JSON
+                try {
+                    const jsonError = JSON.parse(text);
+                    resEl.innerHTML = `<div class="text-red-500 text-center font-bold">${jsonError.error || 'Unknown error'}</div>`;
+                } catch(e) {
+                    // Fallback for HTML errors (500, 403, etc.)
+                    resEl.innerHTML = `<div class="text-red-500 text-center font-bold">Server Error (${response.status})</div>`;
+                }
+                return;
+            }
+
+            const data = await response.json();
+            
+            if (data.error) {
+                resEl.innerHTML = `<div class="text-red-500 text-center font-bold">${data.error}</div>`;
+            } else {
+                let html = '';
+                // Result
+                if (data.result !== undefined) {
+                     const isString = typeof data.result === 'string';
+                     html += `<div class="text-center ${isString ? 'text-xl' : 'text-3xl'} font-bold text-gray-800 py-2 bg-white rounded-xl border border-gray-100 shadow-inner mb-4" dir="auto">${data.result}</div>`;
+                }
+                
+                // Steps
+                if (data.steps && data.steps.length > 0) {
+                    html += '<div class="space-y-2 text-left rtl:text-right">';
+                    data.steps.forEach(step => {
+                        html += `<div class="p-3 bg-white rounded-lg border border-gray-100 text-gray-700 font-medium" dir="auto">${step}</div>`;
+                    });
+                    html += '</div>';
+                }
+                resEl.innerHTML = html;
+                
+                // Trigger MathJax if present
+                if (window.MathJax) {
+                    MathJax.typesetPromise([resEl]).catch(() => {});
+                }
+            }
+        } catch (e) {
+            resEl.innerHTML = `<div class="text-red-500 text-center font-bold">Error: ${e}</div>`;
+        }
+    }
+
+    // --- Area Calculators ---
+    let trapMethod = 'median';
+
+    function toggleTrapMethod(method) {
+        trapMethod = method;
+        const btnMedian = document.getElementById('btn-trap-median');
+        const btnBases = document.getElementById('btn-trap-bases');
+        const formMedian = document.getElementById('formula-trap-median');
+        const formBases = document.getElementById('formula-trap-bases');
+        const inpMedian = document.getElementById('inputs-trap-median');
+        const inpBases = document.getElementById('inputs-trap-bases');
+
+        if (method === 'median') {
+            btnMedian.className = 'flex-1 py-1 rounded-md text-sm font-bold bg-white text-purple-700 shadow-sm transition';
+            btnBases.className = 'flex-1 py-1 rounded-md text-sm font-bold text-purple-500 hover:text-purple-700 transition';
+            formMedian.classList.remove('hidden');
+            formBases.classList.add('hidden');
+            inpMedian.classList.remove('hidden');
+            inpBases.classList.add('hidden');
+        } else {
+            btnBases.className = 'flex-1 py-1 rounded-md text-sm font-bold bg-white text-purple-700 shadow-sm transition';
+            btnMedian.className = 'flex-1 py-1 rounded-md text-sm font-bold text-purple-500 hover:text-purple-700 transition';
+            formBases.classList.remove('hidden');
+            formMedian.classList.add('hidden');
+            inpBases.classList.remove('hidden');
+            inpMedian.classList.add('hidden');
+        }
+    }
+
+    function calcSquareArea() {
+        const d = document.getElementById('area-sq-d').value;
+        if (d && d > 0) {
+            callGeometryAPI({ mode: 'area', shape: 'square', params: { diagonal: d } }, 'res-sq');
+        } else {
+             alert("{% if request.session.lang == 'ar' %}يرجى إدخال قيم صحيحة{% else %}Please enter valid positive numbers{% endif %}");
+        }
+    }
+
+    function calcTrapArea() {
+        const h = document.getElementById('area-trap-h').value;
+        if (!h || h <= 0) {
+             alert("{% if request.session.lang == 'ar' %}يرجى إدخال قيم صحيحة{% else %}Please enter valid positive numbers{% endif %}");
+             return;
+        }
+
+        let params = { h: h };
+        if (trapMethod === 'median') {
+            const m = document.getElementById('area-trap-m').value;
+            if (!m || m <= 0) {
+                 alert("{% if request.session.lang == 'ar' %}يرجى إدخال قيم صحيحة{% else %}Please enter valid positive numbers{% endif %}");
+                 return;
+            }
+            params.m = m;
+        } else {
+            const b1 = document.getElementById('area-trap-b1').value;
+            const b2 = document.getElementById('area-trap-b2').value;
+            if (!b1 || !b2 || b1 <= 0 || b2 <= 0) {
+                 alert("{% if request.session.lang == 'ar' %}يرجى إدخال قيم صحيحة{% else %}Please enter valid positive numbers{% endif %}");
+                 return;
+            }
+            params.b1 = b1;
+            params.b2 = b2;
+        }
+        
+        callGeometryAPI({ mode: 'area', shape: 'trapezoid', params: params }, 'res-trap');
+    }
+
+    function calcRhombArea() {
+        const d1 = document.getElementById('area-rhomb-d1').value;
+        const d2 = document.getElementById('area-rhomb-d2').value;
+        if (d1 && d2 && d1 > 0 && d2 > 0) {
+            callGeometryAPI({ mode: 'area', shape: 'rhombus', params: { d1: d1, d2: d2 } }, 'res-rhomb');
+        } else {
+             alert("{% if request.session.lang == 'ar' %}يرجى إدخال قيم صحيحة{% else %}Please enter valid positive numbers{% endif %}");
+        }
+    }
+
+    // --- Pythagoras Converse ---
+    function calcConverse() {
+        const a = document.getElementById('conv-a').value;
+        const b = document.getElementById('conv-b').value;
+        const c = document.getElementById('conv-c').value;
+        
+        if (a && b && c && a > 0 && b > 0 && c > 0) {
+            callGeometryAPI({ mode: 'converse', a: a, b: b, c: c }, 'res-conv');
+        } else {
+            alert("{% if request.session.lang == 'ar' %}يرجى إدخال أطوال صحيحة{% else %}Please enter valid positive lengths{% endif %}");
+        }
+    }
+
+    // --- Transformations ---
+    let trMode = 'translate';
+    function setTransform(m) {
+        trMode = m;
+        document.getElementById('btn-tr-translate').className = m === 'translate' ? 'flex-1 px-3 py-2 rounded bg-green-100 text-green-700 font-bold' : 'flex-1 px-3 py-2 rounded hover:bg-gray-100 text-gray-600 font-bold';
+        document.getElementById('btn-tr-rotate').className = m === 'rotate' ? 'flex-1 px-3 py-2 rounded bg-green-100 text-green-700 font-bold' : 'flex-1 px-3 py-2 rounded hover:bg-gray-100 text-gray-600 font-bold';
+        document.getElementById('btn-tr-reflect').className = m === 'reflect' ? 'flex-1 px-3 py-2 rounded bg-green-100 text-green-700 font-bold' : 'flex-1 px-3 py-2 rounded hover:bg-gray-100 text-gray-600 font-bold';
+        document.getElementById('btn-tr-scale').className = m === 'scale' ? 'flex-1 px-3 py-2 rounded bg-green-100 text-green-700 font-bold' : 'flex-1 px-3 py-2 rounded hover:bg-gray-100 text-gray-600 font-bold';
+        document.getElementById('tr-translate').classList.toggle('hidden', m !== 'translate');
+        document.getElementById('tr-rotate').classList.toggle('hidden', m !== 'rotate');
+        document.getElementById('tr-reflect').classList.toggle('hidden', m !== 'reflect');
+        document.getElementById('tr-scale').classList.toggle('hidden', m !== 'scale');
+    }
+    function calcTransform() {
+        const x = document.getElementById('tr-x').value;
+        const y = document.getElementById('tr-y').value;
+        if (x === '' || y === '') {
+            alert("{% if request.session.lang == 'ar' %}يرجى إدخال نقطة صحيحة{% else %}Please enter a valid point{% endif %}");
+            return;
+        }
+        let params = { x: x, y: y };
+        if (trMode === 'translate') {
+            params.dx = document.getElementById('tr-dx').value || 0;
+            params.dy = document.getElementById('tr-dy').value || 0;
+        } else if (trMode === 'rotate') {
+            params.angle = document.getElementById('tr-angle').value || 0;
+            params.cx = document.getElementById('tr-cx').value || 0;
+            params.cy = document.getElementById('tr-cy').value || 0;
+        } else if (trMode === 'reflect') {
+            params.axis = document.getElementById('tr-axis').value || 'x';
+        } else if (trMode === 'scale') {
+            params.k = document.getElementById('tr-k').value || 1;
+            params.cx = document.getElementById('tr-cx2').value || 0;
+            params.cy = document.getElementById('tr-cy2').value || 0;
+        }
+        callGeometryAPI({ mode: 'transform', ttype: trMode, params: params }, 'res-transform');
+    }
+    
+    // --- Grade 9 Analytic & Circle Geometry Functions ---
+    function calcAnalytic(type) {
+        const x1 = parseFloat(document.getElementById('an-x1').value);
+        const y1 = parseFloat(document.getElementById('an-y1').value);
+        const x2 = parseFloat(document.getElementById('an-x2').value);
+        const y2 = parseFloat(document.getElementById('an-y2').value);
+        
+        if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) {
+             alert('Please enter valid coordinates');
+             return;
+        }
+        
+        callGeometryAPI({
+            mode: 'analytic',
+            calc_type: type,
+            x1: x1, y1: y1, x2: x2, y2: y2
+        }, 'res-analytic');
+    }
+    
+    function calcSexagesimal() {
+        const d = document.getElementById('sex-d').value;
+        const m = document.getElementById('sex-m').value;
+        const s = document.getElementById('sex-s').value;
+        
+        callGeometryAPI({
+            mode: 'sexagesimal',
+            convert: 'to_decimal',
+            deg: d, min: m, sec: s
+        }, 'res-sex');
+    }
+    
+    function calcSexagesimalReverse() {
+        const dec = document.getElementById('sex-dec').value;
+        
+        callGeometryAPI({
+            mode: 'sexagesimal',
+            convert: 'to_dms',
+            decimal: dec
+        }, 'res-sex');
+    }
+    
+    function calcCirclePos() {
+        const r = document.getElementById('circ-r').value;
+        const dist = document.getElementById('circ-dist').value;
+        const type = document.getElementById('circ-type').value;
+        const r2 = document.getElementById('circ-r2').value;
+        
+        const payload = {
+            mode: 'circle_pos',
+            r: r,
+            dist: dist,
+            type: type
+        };
+        if (type === 'circle') payload.r2 = r2;
+        
+        callGeometryAPI(payload, 'res-circle-pos');
+    }
+    
+    document.getElementById('circ-type').addEventListener('change', function() {
+        if(this.value === 'circle') {
+            document.getElementById('circ-r2').classList.remove('hidden');
+        } else {
+            document.getElementById('circ-r2').classList.add('hidden');
+        }
+    });
+    
+    function calcCyclic() {
+        const a1 = document.getElementById('cyc-a1').value;
+        const a2 = document.getElementById('cyc-a2').value;
+        
+        callGeometryAPI({
+            mode: 'cyclic_quad',
+            a1: a1, a2: a2
+        }, 'res-cyclic');
+    }
+    
+    function calcTangent() {
+        const angle = document.getElementById('tan-angle').value;
+        callGeometryAPI({
+            mode: 'tangent',
+            angle: angle
+        }, 'res-tangent');
+    }
+
+    function calcCircleAngles() {
+        const type = document.getElementById('ang-type').value;
+        const val = document.getElementById('ang-val').value;
+        
+        if (!val) {
+             alert('Please enter a value');
+             return;
+        }
+
+        callGeometryAPI({
+            mode: 'circle_angles',
+            type: type,
+            value: val
+        }, 'res-angles');
+    }
+
+    // --- Interactive Lab ---
+    let labCanvas, labCtx;
+    let labMode = 'parallelogram';
+    let labState = {
+        para: { base: 150, height: 100, shear: 50 },
+        sim: { scale: 1.5 },
+        proj: { angle: 0 }
+    };
+
+    function initLab() {
+        labCanvas = document.getElementById('lab-canvas');
+        if(!labCanvas) return;
+        labCtx = labCanvas.getContext('2d');
+        setLabMode('parallelogram');
+    }
+
+    function setLabMode(mode) {
+        labMode = mode;
+        
+        // Update Tabs
+        ['parallelogram', 'similarity', 'projections', 'euclid'].forEach(m => {
+            const btn = document.getElementById('lab-tab-' + m);
+            if(mode === m) {
+                btn.className = 'px-4 py-2 rounded-lg font-bold bg-indigo-100 text-indigo-700 transition shadow-sm';
+            } else {
+                btn.className = 'px-4 py-2 rounded-lg font-bold hover:bg-gray-100 text-gray-600 transition';
+            }
+        });
+
+        // Update Controls
+        const controls = document.getElementById('lab-controls');
+        controls.innerHTML = '';
+        
+        if(mode === 'parallelogram') {
+            controls.innerHTML = `
+                <p class="text-sm text-gray-600">
+                    {% if request.session.lang == 'ar' %}
+                    متوازيات الأضلاع المشتركة في القاعدة والمحصورة بين مستقيمين متوازيين متساوية في المساحة.
+                    {% else %}
+                    Parallelograms with the same base and between same parallel lines have equal area.
+                    {% endif %}
+                </p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">{% if request.session.lang == 'ar' %}تغيير الشكل (Shear){% else %}Shear{% endif %}</label>
+                        <input type="range" min="0" max="150" value="${labState.para.shear}" oninput="labState.para.shear=parseInt(this.value); drawLab()" class="w-full">
+                    </div>
+                    <div class="p-4 bg-indigo-50 rounded-xl text-center">
+                        <div class="text-sm text-indigo-600 font-bold mb-1">{% if request.session.lang == 'ar' %}المساحة = القاعدة × الارتفاع{% else %}Area = Base × Height{% endif %}</div>
+                        <div class="text-xl font-mono font-bold text-indigo-800">Area = ${labState.para.base} × ${labState.para.height} = ${labState.para.base * labState.para.height}</div>
+                    </div>
+                </div>
+            `;
+        } else if (mode === 'similarity') {
+            controls.innerHTML = `
+                <p class="text-sm text-gray-600">
+                    {% if request.session.lang == 'ar' %}
+                    المضلعات المتشابهة: الزوايا المتناظرة متساوية والأضلاع المتناظرة متناسبة.
+                    {% else %}
+                    Similar Polygons: Corresponding angles are equal and corresponding sides are proportional.
+                    {% endif %}
+                </p>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1">{% if request.session.lang == 'ar' %}معامل التكبير (Scale Factor){% else %}Scale Factor{% endif %}</label>
+                    <input type="range" min="5" max="25" value="${labState.sim.scale*10}" oninput="labState.sim.scale=this.value/10; drawLab()" class="w-full">
+                    <div class="text-center font-bold text-indigo-600 mt-2">k = <span id="scale-val">${labState.sim.scale}</span></div>
+                </div>
+            `;
+        } else if (mode === 'projections') {
+             controls.innerHTML = `
+                <p class="text-sm text-gray-600">
+                    {% if request.session.lang == 'ar' %}
+                    مسقط قطعة مستقيمة على مستقيم معلوم.
+                    {% else %}
+                    Projection of a line segment onto a line.
+                    {% endif %}
+                </p>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1">{% if request.session.lang == 'ar' %}زاوية الميل{% else %}Angle{% endif %}</label>
+                    <input type="range" min="0" max="90" value="${labState.proj.angle}" oninput="labState.proj.angle=parseInt(this.value); drawLab()" class="w-full">
+                </div>
+            `;
+        } else if (mode === 'euclid') {
+             controls.innerHTML = `
+                <p class="text-sm text-gray-600">
+                    {% if request.session.lang == 'ar' %}
+                    نظرية إقليدس: في المثلث القائم، مساحة المربع المنشأ على أحد ضلعي القائمة تساوي مساحة المستطيل الذي بعداه مسقط هذا الضلع على الوتر وطول الوتر.
+                    {% else %}
+                    Euclid's Theorem visual demonstration.
+                    {% endif %}
+                </p>
+                <div class="text-xs text-gray-500">
+                    AD² = DB × DC<br>
+                    AB² = BD × BC<br>
+                    AC² = CD × CB
+                </div>
+            `;
+        }
+        
+        drawLab();
+    }
+
+    function drawLab() {
+        if(!labCtx) return;
+        const w = labCanvas.width;
+        const h = labCanvas.height;
+        labCtx.clearRect(0, 0, w, h);
+        
+        labCtx.strokeStyle = '#333';
+        labCtx.lineWidth = 2;
+        labCtx.fillStyle = '#4f46e5';
+        
+        if (labMode === 'parallelogram') {
+            const base = labState.para.base;
+            const height = labState.para.height;
+            const shear = labState.para.shear;
+            const yBase = h - 100;
+            const xStart = (w - base - 150) / 2; // centerish
+
+            // Parallel Lines
+            labCtx.beginPath();
+            labCtx.strokeStyle = '#9ca3af';
+            labCtx.setLineDash([5, 5]);
+            labCtx.moveTo(0, yBase); labCtx.lineTo(w, yBase);
+            labCtx.moveTo(0, yBase - height); labCtx.lineTo(w, yBase - height);
+            labCtx.stroke();
+            labCtx.setLineDash([]);
+
+            // Fixed Parallelogram (Rectangle)
+            labCtx.beginPath();
+            labCtx.fillStyle = 'rgba(79, 70, 229, 0.3)';
+            labCtx.strokeStyle = '#4f46e5';
+            labCtx.moveTo(xStart, yBase);
+            labCtx.lineTo(xStart + base, yBase);
+            labCtx.lineTo(xStart + base, yBase - height);
+            labCtx.lineTo(xStart, yBase - height);
+            labCtx.closePath();
+            labCtx.fill();
+            labCtx.stroke();
+            
+            // Sheared Parallelogram
+            labCtx.beginPath();
+            labCtx.fillStyle = 'rgba(219, 39, 119, 0.3)'; // Pink
+            labCtx.strokeStyle = '#db2777';
+            labCtx.moveTo(xStart + base + 20, yBase); // Shifted right
+            labCtx.lineTo(xStart + base + 20 + base, yBase);
+            labCtx.lineTo(xStart + base + 20 + base + shear, yBase - height);
+            labCtx.lineTo(xStart + base + 20 + shear, yBase - height);
+            labCtx.closePath();
+            labCtx.fill();
+            labCtx.stroke();
+            
+        } else if (labMode === 'similarity') {
+            const scale = labState.sim.scale;
+            document.getElementById('scale-val').innerText = scale;
+            
+            // Triangle 1 (Small)
+            const x1 = 50, y1 = h - 50;
+            const base1 = 60, h1 = 80;
+            
+            labCtx.beginPath();
+            labCtx.fillStyle = 'rgba(79, 70, 229, 0.3)';
+            labCtx.strokeStyle = '#4f46e5';
+            labCtx.moveTo(x1, y1);
+            labCtx.lineTo(x1 + base1, y1);
+            labCtx.lineTo(x1 + 20, y1 - h1);
+            labCtx.closePath();
+            labCtx.fill();
+            labCtx.stroke();
+            
+            labCtx.fillStyle = '#333';
+            labCtx.font = "14px Arial";
+            labCtx.fillText("A", x1 + 20, y1 - h1 - 5);
+            
+            // Triangle 2 (Scaled)
+            const x2 = 200, y2 = h - 50;
+            const base2 = base1 * scale;
+            const h2 = h1 * scale;
+            
+            labCtx.beginPath();
+            labCtx.fillStyle = 'rgba(16, 185, 129, 0.3)'; // Emerald
+            labCtx.strokeStyle = '#10b981';
+            labCtx.moveTo(x2, y2);
+            labCtx.lineTo(x2 + base2, y2);
+            labCtx.lineTo(x2 + 20 * scale, y2 - h2);
+            labCtx.closePath();
+            labCtx.fill();
+            labCtx.stroke();
+            
+            labCtx.fillStyle = '#333';
+            labCtx.fillText("A'", x2 + 20 * scale, y2 - h2 - 5);
+
+        } else if (labMode === 'projections') {
+            const angle = labState.proj.angle;
+            const rad = angle * Math.PI / 180;
+            
+            const lineY = h - 50;
+            const len = 150;
+            const xStart = 100;
+            
+            // Line L
+            labCtx.beginPath();
+            labCtx.strokeStyle = '#333';
+            labCtx.lineWidth = 3;
+            labCtx.moveTo(50, lineY); labCtx.lineTo(w-50, lineY);
+            labCtx.stroke();
+            
+            // Segment AB
+            const xA = xStart;
+            const yA = lineY - 100;
+            
+            // B rotates around A? No, let's just project a segment.
+            // Let segment start at (xA, yA) and have length 'len' at angle.
+            // Angle 0 = horizontal parallel to line.
+            const xB = xA + len * Math.cos(rad);
+            const yB = yA - len * Math.sin(rad); // y up is negative
+            
+            labCtx.beginPath();
+            labCtx.strokeStyle = '#4f46e5';
+            labCtx.moveTo(xA, yA); labCtx.lineTo(xB, yB);
+            labCtx.stroke();
+            
+            // Projection lines
+            labCtx.setLineDash([5, 5]);
+            labCtx.strokeStyle = '#9ca3af';
+            
+            // A'
+            labCtx.beginPath();
+            labCtx.moveTo(xA, yA); labCtx.lineTo(xA, lineY);
+            labCtx.stroke();
+            
+            // B'
+            labCtx.beginPath();
+            labCtx.moveTo(xB, yB); labCtx.lineTo(xB, lineY);
+            labCtx.stroke();
+            
+            labCtx.setLineDash([]);
+            
+            // Projection Segment A'B'
+            labCtx.beginPath();
+            labCtx.strokeStyle = '#db2777';
+            labCtx.lineWidth = 4;
+            labCtx.moveTo(xA, lineY); labCtx.lineTo(xB, lineY);
+            labCtx.stroke();
+            
+            // Labels
+            labCtx.fillStyle = '#333';
+            labCtx.fillText("A", xA-10, yA);
+            labCtx.fillText("B", xB+5, yB);
+            labCtx.fillText("A'", xA-10, lineY+20);
+            labCtx.fillText("B'", xB+5, lineY+20);
+            
+        } else if (labMode === 'euclid') {
+            // Draw Right Triangle ABC (A is 90)
+            // Let BC be horizontal on bottom
+            const xB = 150, yB = h - 100;
+            const xC = 450, yC = h - 100;
+            const BC = xC - xB;
+            
+            // Altitude AD splits BC into p and q. h^2 = pq
+            // Let's pick a nice point D.
+            const xD = 250;
+            const yD = yB; // D is on BC
+            
+            // Find A such that A is 90 deg.
+            // A must be on circle with diameter BC.
+            // And AD is perp to BC.
+            // So xA = xD. yA?
+            // AD^2 = BD * DC
+            const BD = xD - xB;
+            const DC = xC - xD;
+            const AD_sq = BD * DC;
+            const AD = Math.sqrt(AD_sq);
+            const yA = yB - AD;
+            
+            // Triangle ABC
+            labCtx.beginPath();
+            labCtx.lineWidth = 3;
+            labCtx.strokeStyle = '#333';
+            labCtx.moveTo(xB, yB); // B
+            labCtx.lineTo(xC, yC); // C
+            labCtx.lineTo(xD, yA); // A
+            labCtx.closePath();
+            labCtx.stroke();
+            
+            // Altitude AD
+            labCtx.beginPath();
+            labCtx.strokeStyle = '#db2777';
+            labCtx.moveTo(xD, yA); labCtx.lineTo(xD, yD);
+            labCtx.stroke();
+            
+            // Labels
+            labCtx.font = "16px Arial";
+            labCtx.fillStyle = '#333';
+            labCtx.fillText("A", xD, yA - 10);
+            labCtx.fillText("B", xB - 10, yB + 10);
+            labCtx.fillText("C", xC + 5, yB + 10);
+            labCtx.fillText("D", xD, yD + 20);
+            
+            // Squares? Too complex to draw all 3 squares. Just show the altitude and projections.
+            // Maybe color the segments.
+            // AB
+            labCtx.beginPath(); labCtx.strokeStyle = '#4f46e5'; labCtx.moveTo(xB, yB); labCtx.lineTo(xD, yA); labCtx.stroke();
+            // AC
+            labCtx.beginPath(); labCtx.strokeStyle = '#10b981'; labCtx.moveTo(xC, yC); labCtx.lineTo(xD, yA); labCtx.stroke();
+            
+        }
+    }
+
+    // Init All
+    window.addEventListener('DOMContentLoaded', () => {
+        initLab();
+
+        // Check Grade and Show Tools
+        const gradeSlug = "{{ grade.slug }}";
+        if (gradeSlug === 'prep-3') {
+            document.querySelectorAll('.grade9-tool').forEach(el => el.classList.remove('hidden'));
+        }
+
+        // Auto-show sections based on tool slug
+        const toolSlug = "{{ tool.slug }}";
+        const secArea = document.getElementById('panel-area');
+        const secConv = document.getElementById('section-converse');
+        const secLab = document.getElementById('section-lab');
+        const secAnalytic = document.getElementById('section-analytic');
+        const secCircle = document.getElementById('section-circle');
+        
+        // Hide all by default if a specific tool is selected
+        const allSections = [secArea, secConv, secLab, secAnalytic, secCircle];
+        
+        // Helper to show only one
+        function showOnly(sec) {
+            allSections.forEach(s => {
+                if(s) s.classList.add('hidden');
+            });
+            if(sec) {
+                sec.classList.remove('hidden');
+                sec.classList.remove('mt-12'); // Remove margin for cleaner look if it's the only one
+            }
+        }
+
+        if (toolSlug === 'quadrilateral-area') {
+            showOnly(secArea);
+        } else if (toolSlug === 'pythagoras-converse') {
+            showOnly(secConv);
+        } else if (toolSlug === 'geometry-interactive-lab') {
+            showOnly(secLab);
+        } else if (toolSlug === 'analytic-geometry-tools') {
+            showOnly(secAnalytic);
+        } else if (toolSlug === 'circle-geometry-tools') {
+            showOnly(secCircle);
+        }
+    });
+
+
+</script>
+{% endblock %}

@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="bg-indigo-900 py-6 border-b border-indigo-800 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center">
+        <a href="{% url 'core:dashboard' %}" class="flex items-center gap-2 text-indigo-200 hover:text-white transition font-medium">
+            <i class="fa-solid fa-arrow-left rtl:rotate-180"></i>
+            {% if request.session.lang == 'ar' %}العودة للوحة التحكم{% else %}Back to Dashboard{% endif %}
+        </a>
+        <h1 class="text-xl font-bold text-white flex items-center gap-2">
+            <i class="fa-solid {{ tool.icon_name|default:'fa-rotate' }}"></i>
+            {% if request.session.lang == 'ar' %}{{ tool.name_ar }}{% else %}{{ tool.name_en }}{% endif %}
+        </h1>
+        <div class="w-20"></div>
+    </div>
+</div>
+
+<div class="bg-gray-50 min-h-screen py-8">
+    <div class="max-w-4xl mx-auto px-4">
+        
+        <!-- Converter Card -->
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+            <!-- Tabs -->
+            <div class="flex overflow-x-auto bg-gray-50 border-b border-gray-200" id="tabs">
+                <button onclick="switchTab('length')" class="tab-btn px-6 py-4 font-bold text-gray-600 hover:text-indigo-600 hover:bg-white transition border-b-2 border-transparent active-tab flex items-center gap-2" data-tab="length">
+                    <i class="fa-solid fa-ruler-combined"></i>
+                    {% if request.session.lang == 'ar' %}الطول{% else %}Length{% endif %}
+                </button>
+                <button onclick="switchTab('mass')" class="tab-btn px-6 py-4 font-bold text-gray-600 hover:text-indigo-600 hover:bg-white transition border-b-2 border-transparent flex items-center gap-2" data-tab="mass">
+                    <i class="fa-solid fa-weight-hanging"></i>
+                    {% if request.session.lang == 'ar' %}الوزن{% else %}Mass{% endif %}
+                </button>
+                <button onclick="switchTab('temp')" class="tab-btn px-6 py-4 font-bold text-gray-600 hover:text-indigo-600 hover:bg-white transition border-b-2 border-transparent flex items-center gap-2" data-tab="temp">
+                    <i class="fa-solid fa-temperature-half"></i>
+                    {% if request.session.lang == 'ar' %}الحرارة{% else %}Temperature{% endif %}
+                </button>
+                <button onclick="switchTab('time')" class="tab-btn px-6 py-4 font-bold text-gray-600 hover:text-indigo-600 hover:bg-white transition border-b-2 border-transparent flex items-center gap-2" data-tab="time">
+                    <i class="fa-solid fa-clock"></i>
+                    {% if request.session.lang == 'ar' %}الوقت{% else %}Time{% endif %}
+                </button>
+                <button onclick="switchTab('area')" class="tab-btn px-6 py-4 font-bold text-gray-600 hover:text-indigo-600 hover:bg-white transition border-b-2 border-transparent flex items-center gap-2" data-tab="area">
+                    <i class="fa-solid fa-vector-square"></i>
+                    {% if request.session.lang == 'ar' %}المساحة{% else %}Area{% endif %}
+                </button>
+            </div>
+
+            <!-- Content -->
+            <div class="p-8">
+                <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-6 items-center">
+                    <!-- From -->
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <label class="block text-sm font-bold text-gray-500 mb-2">
+                            {% if request.session.lang == 'ar' %}من{% else %}From{% endif %}
+                        </label>
+                        <input type="number" id="input-val" value="1" oninput="convert()" class="w-full text-3xl font-bold bg-transparent border-none focus:ring-0 text-gray-800 p-0 mb-4 placeholder-gray-300" placeholder="0">
+                        <select id="from-unit" onchange="convert()" class="w-full bg-white border border-gray-300 text-gray-700 py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            <!-- Options injected by JS -->
+                        </select>
+                    </div>
+
+                    <!-- Equals Icon -->
+                    <div class="flex justify-center">
+                        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                            <i class="fa-solid fa-arrow-right-long transform md:rotate-0 rotate-90"></i>
+                        </div>
+                    </div>
+
+                    <!-- To -->
+                    <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                        <label class="block text-sm font-bold text-indigo-500 mb-2">
+                            {% if request.session.lang == 'ar' %}إلى{% else %}To{% endif %}
+                        </label>
+                        <div id="output-val" class="w-full text-3xl font-bold text-indigo-700 mb-4 overflow-hidden text-ellipsis">1</div>
+                        <select id="to-unit" onchange="convert()" class="w-full bg-white border border-indigo-300 text-gray-700 py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            <!-- Options injected by JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Formula Display -->
+                <div class="mt-8 pt-6 border-t border-gray-100 text-center">
+                    <p class="text-gray-500 text-sm mb-1">{% if request.session.lang == 'ar' %}الصيغة{% else %}Formula{% endif %}</p>
+                    <p id="formula-display" class="text-gray-800 font-medium font-mono text-lg">-</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .active-tab {
+        @apply text-indigo-600 bg-white border-indigo-600;
+    }
+</style>
+
+<script>
+    const UNITS = {
+        length: {
+            base: 'm',
+            units: {
+                mm: 0.001,
+                cm: 0.01,
+                m: 1,
+                km: 1000,
+                in: 0.0254,
+                ft: 0.3048,
+                yd: 0.9144,
+                mi: 1609.34
+            },
+            names: {
+                mm: 'Millimeter (mm)', cm: 'Centimeter (cm)', m: 'Meter (m)', km: 'Kilometer (km)',
+                in: 'Inch (in)', ft: 'Foot (ft)', yd: 'Yard (yd)', mi: 'Mile (mi)'
+            }
+        },
+        mass: {
+            base: 'kg',
+            units: {
+                mg: 0.000001,
+                g: 0.001,
+                kg: 1,
+                oz: 0.0283495,
+                lb: 0.453592,
+                ton: 1000
+            },
+            names: {
+                mg: 'Milligram (mg)', g: 'Gram (g)', kg: 'Kilogram (kg)',
+                oz: 'Ounce (oz)', lb: 'Pound (lb)', ton: 'Metric Ton (t)'
+            }
+        },
+        time: {
+            base: 's',
+            units: {
+                ms: 0.001,
+                s: 1,
+                min: 60,
+                h: 3600,
+                d: 86400,
+                wk: 604800
+            },
+            names: {
+                ms: 'Millisecond', s: 'Second', min: 'Minute', h: 'Hour', d: 'Day', wk: 'Week'
+            }
+        },
+        area: {
+            base: 'm2',
+            units: {
+                cm2: 0.0001,
+                m2: 1,
+                ha: 10000,
+                km2: 1000000,
+                sqin: 0.00064516,
+                sqft: 0.092903,
+                ac: 4046.86
+            },
+            names: {
+                cm2: 'Square Centimeter', m2: 'Square Meter', ha: 'Hectare', km2: 'Square Kilometer',
+                sqin: 'Square Inch', sqft: 'Square Foot', ac: 'Acre'
+            }
+        }
+        // Temp requires special handling
+    };
+
+    let currentCategory = 'length';
+
+    function switchTab(cat) {
+        currentCategory = cat;
+        
+        // Update UI
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            if (btn.dataset.tab === cat) {
+                btn.classList.add('active-tab', 'text-indigo-600', 'bg-white', 'border-indigo-600');
+                btn.classList.remove('text-gray-600', 'border-transparent');
+            } else {
+                btn.classList.remove('active-tab', 'text-indigo-600', 'bg-white', 'border-indigo-600');
+                btn.classList.add('text-gray-600', 'border-transparent');
+            }
+        });
+
+        populateSelects();
+        convert();
+    }
+
+    function populateSelects() {
+        const fromSel = document.getElementById('from-unit');
+        const toSel = document.getElementById('to-unit');
+        fromSel.innerHTML = '';
+        toSel.innerHTML = '';
+
+        if (currentCategory === 'temp') {
+            const temps = [
+                {val: 'c', name: 'Celsius (°C)'},
+                {val: 'f', name: 'Fahrenheit (°F)'},
+                {val: 'k', name: 'Kelvin (K)'}
+            ];
+            temps.forEach(u => {
+                fromSel.add(new Option(u.name, u.val));
+                toSel.add(new Option(u.name, u.val));
+            });
+            toSel.value = 'f'; // Default to F
+        } else {
+            const data = UNITS[currentCategory];
+            for (const [key, val] of Object.entries(data.names)) {
+                fromSel.add(new Option(val, key));
+                toSel.add(new Option(val, key));
+            }
+            // Set defaults (e.g., m to ft)
+            const keys = Object.keys(data.units);
+            if (keys.length > 1) toSel.value = keys[Math.min(2, keys.length-1)];
+        }
+    }
+
+    function convert() {
+        const val = parseFloat(document.getElementById('input-val').value);
+        const from = document.getElementById('from-unit').value;
+        const to = document.getElementById('to-unit').value;
+        const outDiv = document.getElementById('output-val');
+        const formulaDiv = document.getElementById('formula-display');
+
+        if (isNaN(val)) {
+            outDiv.innerText = '-';
+            return;
+        }
+
+        let result;
+        let formula = '';
+
+        if (currentCategory === 'temp') {
+            // Temperature Special Logic
+            if (from === to) result = val;
+            else if (from === 'c' && to === 'f') { result = (val * 9/5) + 32; formula = `(°C × 9/5) + 32 = °F`; }
+            else if (from === 'c' && to === 'k') { result = val + 273.15; formula = `°C + 273.15 = K`; }
+            else if (from === 'f' && to === 'c') { result = (val - 32) * 5/9; formula = `(°F - 32) × 5/9 = °C`; }
+            else if (from === 'f' && to === 'k') { result = (val - 32) * 5/9 + 273.15; formula = `(°F - 32) × 5/9 + 273.15 = K`; }
+            else if (from === 'k' && to === 'c') { result = val - 273.15; formula = `K - 273.15 = °C`; }
+            else if (from === 'k' && to === 'f') { result = (val - 273.15) * 9/5 + 32; formula = `(K - 273.15) × 9/5 + 32 = °F`; }
+        } else {
+            // Standard Linear Conversion
+            const data = UNITS[currentCategory];
+            const baseVal = val * data.units[from];
+            result = baseVal / data.units[to];
+            
+            // Formula display (simplified)
+            formula = `1 ${from} ≈ ${(data.units[from]/data.units[to]).toPrecision(4)} ${to}`;
+        }
+
+        // Format Result
+        // If result is integer, show integer. If decimal, max 6 decimals, strip trailing zeros
+        outDiv.innerText = parseFloat(result.toFixed(6));
+        formulaDiv.innerText = formula;
+    }
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+        switchTab('length');
+    });
+
+</script>
+{% endblock %}

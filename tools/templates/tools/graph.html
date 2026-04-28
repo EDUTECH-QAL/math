@@ -1,0 +1,368 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<!-- Libraries -->
+<script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+<script src="https://unpkg.com/mathjs@11.8.0/lib/browser/math.js"></script>
+
+<div class="bg-gray-50 h-[calc(100dvh-64px)] md:h-[calc(100vh-64px)] flex flex-col font-sans overflow-hidden relative">
+    <!-- Header -->
+    <div class="bg-indigo-900 border-b border-indigo-800 px-4 py-4 flex justify-between items-center shadow-sm z-30 shrink-0">
+        <div class="flex items-center gap-4">
+            <a href="{% url 'core:dashboard' %}" class="flex items-center gap-2 text-indigo-200 hover:text-white transition font-medium">
+                <i class="fa-solid fa-arrow-left rtl:rotate-180"></i>
+                {% if request.session.lang == 'ar' %}العودة للوحة التحكم{% else %}Back to Dashboard{% endif %}
+            </a>
+            <h1 class="font-bold text-white text-lg flex items-center gap-2">
+                <i class="fa-solid fa-chart-line"></i>
+                {% if request.session.lang == 'ar' %}الرسام البياني{% else %}Graphing Calculator{% endif %}
+            </h1>
+        </div>
+        <div class="text-sm text-indigo-200 hidden md:block">
+            {% if request.session.lang == 'ar' %}
+            استخدم المتغير x، مثال: <code class="bg-indigo-800 px-2 py-1 rounded text-white">sin(x)</code>
+            {% else %}
+            Use variable x, e.g., <code class="bg-indigo-800 px-2 py-1 rounded text-white">sin(x)</code>
+            {% endif %}
+        </div>
+        <!-- Mobile Toggle Button (Moved to Header) -->
+        <button onclick="toggleSidebar()" class="md:hidden text-white hover:text-indigo-200 transition p-2">
+            <i class="fa-solid fa-layer-group text-xl"></i>
+        </button>
+    </div>
+
+    <div class="flex-1 flex overflow-hidden relative">
+        <!-- Mobile Backdrop -->
+        <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-20 hidden md:hidden transition-opacity opacity-0"></div>
+
+        <!-- Sidebar -->
+        <div class="w-80 md:w-96 bg-white border-r border-gray-200 flex flex-col z-30 shadow-2xl absolute md:relative h-full transition-transform duration-300 transform -translate-x-full md:translate-x-0" id="sidebar">
+            <!-- Mobile Close Button Header -->
+            <div class="md:hidden p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 class="font-bold text-gray-700">{% if request.session.lang == 'ar' %}الدوال{% else %}Functions{% endif %}</h3>
+                <button onclick="toggleSidebar()" class="text-gray-400 hover:text-red-500 transition">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Add Button -->
+            <div class="p-4 border-b border-gray-100 bg-white md:bg-gray-50">
+                 <button onclick="addFunction()" class="w-full py-3 px-4 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition shadow-lg hover:shadow-indigo-200 font-bold flex items-center justify-center gap-2 transform active:scale-95 duration-100">
+                    <i class="fa-solid fa-plus"></i>
+                    {% if request.session.lang == 'ar' %}دالة جديدة{% else %}Add Function{% endif %}
+                 </button>
+            </div>
+            
+            <!-- Function List -->
+            <div id="function-list" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-gray-50/50">
+                <!-- Functions will be injected here -->
+            </div>
+
+            <!-- Examples Footer -->
+            <div class="p-4 border-t border-gray-100 bg-white text-xs text-gray-500">
+                <p class="mb-2 font-bold uppercase tracking-wider opacity-70">{% if request.session.lang == 'ar' %}أمثلة سريعة{% else %}Quick Examples{% endif %}</p>
+                <div class="flex flex-wrap gap-2">
+                    <button class="bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition" onclick="addFunction('sin(x)')">sin(x)</button>
+                    <button class="bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition" onclick="addFunction('x^2 - 2')">x² - 2</button>
+                    <button class="bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition" onclick="addFunction('tan(x)')">tan(x)</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Graph Area -->
+        <div class="flex-1 bg-white relative w-full h-full overflow-hidden">
+            <div id="plot-area" class="w-full h-full"></div>
+            
+            <!-- Error Toast -->
+            <div id="error-toast" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium hidden transition-opacity flex items-center gap-2 z-10">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>Error parsing function</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #c7c7c7;
+        border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #a0a0a0;
+    }
+    
+    /* Function Card Styles */
+    .func-card {
+        @apply bg-white rounded-xl border border-gray-200 p-3 shadow-sm transition-all duration-200;
+    }
+    .func-card:focus-within {
+        @apply border-indigo-500 ring-2 ring-indigo-50 shadow-md;
+    }
+    
+    .color-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+</style>
+
+<script>
+    // --- Configuration ---
+    const COLORS = [
+        '#4f46e5', // Indigo 600
+        '#db2777', // Pink 600
+        '#059669', // Emerald 600
+        '#d97706', // Amber 600
+        '#dc2626', // Red 600
+        '#7c3aed', // Violet 600
+        '#0891b2', // Cyan 600
+    ];
+
+    let functions = []; // { id, expr, color, visible }
+    let nextId = 1;
+    let layout = {
+        margin: { t: 10, r: 10, b: 30, l: 40 },
+        hovermode: 'closest',
+        dragmode: 'pan',
+        xaxis: { 
+            title: 'x', 
+            zeroline: true, 
+            gridcolor: '#f3f4f6',
+            zerolinecolor: '#374151',
+        },
+        yaxis: { 
+            title: 'y', 
+            zeroline: true,
+            gridcolor: '#f3f4f6',
+            zerolinecolor: '#374151',
+        }
+    };
+    
+    const config = { 
+        responsive: true,
+        displayModeBar: true,
+        modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d'],
+        displaylogo: false,
+        scrollZoom: true,
+    };
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', () => {
+        Plotly.newPlot('plot-area', [], layout, config);
+        
+        // Add default function
+        addFunction('x^2');
+        
+        // Window resize handler
+        window.addEventListener('resize', () => {
+            Plotly.Plots.resize('plot-area');
+        });
+    });
+
+    // --- Logic ---
+
+    function addFunction(expr = '') {
+        const id = nextId++;
+        const color = COLORS[(id - 1) % COLORS.length];
+        
+        const func = {
+            id,
+            expr,
+            color,
+            visible: true
+        };
+        
+        functions.push(func);
+        renderFunctionCard(func);
+        updateGraph();
+        
+        // Mobile: Open sidebar if closed
+        if (window.innerWidth < 768) {
+             const sidebar = document.getElementById('sidebar');
+             if (sidebar.classList.contains('-translate-x-full')) {
+                 toggleSidebar();
+             }
+        }
+    }
+
+    function removeFunction(id) {
+        functions = functions.filter(f => f.id !== id);
+        document.getElementById(`func-card-${id}`).remove();
+        updateGraph();
+    }
+
+    function updateFunctionExpr(id, newExpr) {
+        const func = functions.find(f => f.id === id);
+        if (func) {
+            func.expr = newExpr;
+            updateGraph();
+        }
+    }
+
+    function toggleVisibility(id) {
+        const func = functions.find(f => f.id === id);
+        if (func) {
+            func.visible = !func.visible;
+            // Update UI Icon
+            const btn = document.getElementById(`vis-btn-${id}`);
+            btn.innerHTML = func.visible ? '<i class="fa-solid fa-eye"></i>' : '<i class="fa-solid fa-eye-slash text-gray-400"></i>';
+            updateGraph();
+        }
+    }
+
+    function renderFunctionCard(func) {
+        const container = document.getElementById('function-list');
+        const div = document.createElement('div');
+        div.id = `func-card-${func.id}`;
+        div.className = 'func-card bg-white rounded-xl border border-gray-200 p-3 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-3 group';
+        
+        div.innerHTML = `
+            <div class="flex-shrink-0 cursor-pointer w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition" onclick="toggleVisibility(${func.id})" id="vis-btn-${func.id}">
+                <i class="fa-solid fa-eye text-indigo-500"></i>
+            </div>
+            
+            <div class="font-mono text-gray-400 text-sm font-bold pt-1">f<sub>${func.id}</sub></div>
+            
+            <div class="flex-1">
+                <div class="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1 border border-gray-200 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 focus-within:bg-white transition-all">
+                    <span class="w-3 h-3 rounded-full shadow-sm ring-1 ring-white" style="background-color: ${func.color}"></span>
+                    <input type="text" 
+                        value="${func.expr}" 
+                        oninput="updateFunctionExpr(${func.id}, this.value)"
+                        class="w-full bg-transparent border-none focus:ring-0 text-gray-800 font-medium py-1 placeholder-gray-400"
+                        placeholder="Expression..."
+                    >
+                </div>
+            </div>
+            
+            <button onclick="removeFunction(${func.id})" class="text-gray-400 hover:text-red-500 hover:bg-red-50 w-8 h-8 rounded-full transition flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        `;
+        
+        container.appendChild(div);
+    }
+
+    // Debounce function for performance
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    const updateGraph = debounce(() => {
+        const data = [];
+        let hasError = false;
+        
+        // Determine Range (Current View or Default)
+        const plotDiv = document.getElementById('plot-area');
+        let xRange = [-10, 10];
+        if (plotDiv.layout && plotDiv.layout.xaxis && plotDiv.layout.xaxis.range) {
+            xRange = plotDiv.layout.xaxis.range;
+        }
+        
+        // Generate X points (adaptive density could be better, but fixed for now)
+        // We use a bit more points for smoothness
+        const N = 1000;
+        const step = (xRange[1] - xRange[0]) / N;
+        const xValues = [];
+        for (let i = 0; i <= N; i++) {
+            xValues.push(xRange[0] + i * step);
+        }
+
+        functions.forEach(func => {
+            if (!func.visible || !func.expr.trim()) return;
+
+            try {
+                // Pre-processing
+                let expr = func.expr.toLowerCase();
+                
+                // 1. Add * between number and variable/parenthesis (e.g., "2x" -> "2*x", "2(" -> "2*(")
+                expr = expr.replace(/(\d)([a-z(])/g, '$1*$2');
+                
+                // 2. Add * between ) and ( e.g. ")( " -> ")*("
+                expr = expr.replace(/\)([(])/g, ')*$1');
+
+                // 3. Add * between ) and variable e.g. ")x" -> ")*x"
+                expr = expr.replace(/\)([a-z])/g, ')*$1');
+                
+                // 4. Handle x(...) where x is a variable, not a function? 
+                // Difficult to distinguish x(.. from sin(.. without a list of functions.
+                // For now, we skip letter-parenthesis to allow functions like sin(x).
+
+                const compiled = math.compile(expr);
+                const yValues = xValues.map(x => {
+                    try {
+                        return compiled.evaluate({ x: x });
+                    } catch (e) {
+                        return NaN;
+                    }
+                });
+
+                data.push({
+                    x: xValues,
+                    y: yValues,
+                    mode: 'lines',
+                    line: {
+                        color: func.color,
+                        width: 3
+                    },
+                    name: `f${func.id}(x) = ${func.expr}`
+                });
+                
+            } catch (err) {
+                console.warn(`Error parsing f${func.id}:`, err);
+                hasError = true;
+            }
+        });
+
+        // Show/Hide Error
+        const toast = document.getElementById('error-toast');
+        if (hasError) {
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+
+        Plotly.react('plot-area', data, layout, config);
+    }, 300); // 300ms debounce
+
+    // --- Sidebar Toggle ---
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        
+        if (sidebar.classList.contains('-translate-x-full')) {
+            // Show
+            sidebar.classList.remove('-translate-x-full');
+            if (backdrop) {
+                backdrop.classList.remove('hidden');
+                // Small delay to allow display:block to apply before opacity transition
+                setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
+            }
+        } else {
+            // Hide
+            sidebar.classList.add('-translate-x-full');
+            if (backdrop) {
+                backdrop.classList.add('opacity-0');
+                setTimeout(() => backdrop.classList.add('hidden'), 300); // Match transition duration
+            }
+        }
+        
+        // Trigger resize to ensure graph fits
+        setTimeout(() => {
+            try {
+                Plotly.Plots.resize('plot-area');
+            } catch(e) {}
+        }, 300);
+    }
+</script>
+{% endblock %}

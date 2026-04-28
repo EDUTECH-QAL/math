@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="bg-indigo-900 py-10 border-b border-indigo-800 relative overflow-hidden">
+    <div class="absolute inset-0 opacity-20">
+        <svg class="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path d="M0 100 C 40 0 60 0 100 100 Z" fill="url(#grad1)" />
+            <defs>
+                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:rgb(79, 70, 229);stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:rgb(16, 185, 129);stop-opacity:1" />
+                </linearGradient>
+            </defs>
+        </svg>
+    </div>
+    
+    <div class="max-w-7xl mx-auto px-4 flex justify-between items-center relative z-10">
+        <div class="text-white">
+            <span class="text-xs md:text-sm text-indigo-200 uppercase tracking-wide font-bold mb-1 block">
+                {% if request.session.lang == 'ar' %}أنت الآن في{% else %}Current Grade{% endif %}
+            </span>
+            <h1 class="text-2xl md:text-4xl font-bold">
+                {% if request.session.lang == 'ar' %}{{ grade.name_ar }}{% else %}{{ grade.name_en }}{% endif %}
+            </h1>
+        </div>
+        <a href="{% url 'core:home' %}" class="bg-white/10 backdrop-blur hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-lg transition border border-white/10 flex items-center gap-2">
+            {% if request.session.lang == 'ar' %}تغيير الصف{% else %}Change Grade{% endif %}
+            <i class="fa-solid fa-arrow-right-arrow-left"></i>
+        </a>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 py-12">
+    {% if tool_groups %}
+        {% for key, group in tool_groups.items %}
+        <div class="mb-16 last:mb-0">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                    <i class="fa-solid {{ group.icon }} text-xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800">
+                    {% if request.session.lang == 'ar' %}{{ group.title_ar }}{% else %}{{ group.title_en }}{% endif %}
+                </h2>
+                <div class="flex-grow h-px bg-gray-100 ml-4"></div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {% for tool in group.tools %}
+                <div class="group bg-white rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-300 flex flex-col h-full border border-gray-100 overflow-hidden transform hover:-translate-y-2">
+                    <div class="p-8 flex-grow relative">
+                        <div class="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition duration-500 transform group-hover:scale-110">
+                            <i class="fa-solid {{ tool.icon_name }} text-9xl text-indigo-600"></i>
+                        </div>
+                        
+                        <div class="w-16 h-16 bg-gradient-to-br from-indigo-50 to-white rounded-2xl flex items-center justify-center mb-6 text-indigo-600 shadow-sm border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+                            <i class="fa-solid {{ tool.icon_name }} text-3xl"></i>
+                        </div>
+                        
+                        <h3 class="text-2xl font-bold text-gray-900 mb-3 group-hover:text-indigo-600 transition-colors">
+                            {% if request.session.lang == 'ar' %}{{ tool.name_ar }}{% else %}{{ tool.name_en }}{% endif %}
+                        </h3>
+                        
+                        <p class="text-gray-500 text-sm leading-relaxed">
+                            {% if request.session.lang == 'ar' %}{{ tool.description_ar }}{% else %}{{ tool.description_en }}{% endif %}
+                        </p>
+                    </div>
+                    
+                    <div class="p-6 pt-0 mt-auto">
+                        <a href="{% url 'tools:tool_view' tool.slug %}" class="block w-full text-center bg-gray-50 text-gray-700 font-bold py-3 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm hover:shadow-lg group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center gap-2">
+                            {% if request.session.lang == 'ar' %}فتح الأداة{% else %}Open Tool{% endif %} <i class="fa-solid fa-arrow-{% if request.session.lang == 'ar' %}left{% else %}right{% endif %}"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-span-full py-16 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+            <div class="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
+                <i class="fa-solid fa-box-open text-3xl"></i>
+            </div>
+            <p class="text-gray-500 font-medium text-lg">
+                {% if request.session.lang == 'ar' %}لا توجد أدوات متاحة لهذا الصف حالياً.{% else %}No tools available for this grade yet.{% endif %}
+            </p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
