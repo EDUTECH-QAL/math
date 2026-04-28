@@ -1,6 +1,12 @@
 import sympy
-from sympy import symbols, solve, Eq, factor, expand, simplify, latex, Rational, oo, S, sympify, sqrt, Abs, degree
+from sympy import symbols, solve, Eq, factor, expand, simplify, latex as sympy_latex, Rational, oo, S, sympify, sqrt, Abs, degree
 from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
+
+# Custom latex function to use \times for multiplication
+def latex(expr, **kwargs):
+    if 'mul_symbol' not in kwargs:
+        kwargs['mul_symbol'] = 'times'
+    return sympy_latex(expr, **kwargs)
 import random
 import math
 import re
@@ -47,6 +53,7 @@ def sanitize_expression(expr_str):
     # Replace division symbol
     expr_str = expr_str.replace('÷', '/')
     expr_str = expr_str.replace('×', '*')
+    expr_str = expr_str.replace('\\times', '*')
     expr_str = expr_str.replace('·', '*') # Middle dot multiplication
     expr_str = expr_str.replace('∗', '*') # Asterisk operator (U+2217)
     
@@ -71,6 +78,33 @@ def safe_sympify(expr_str, angle_unit='RAD'):
     clean_str = sanitize_expression(expr_str)
     transformations, local_dict = get_math_config(angle_unit)
     return parse_expr(clean_str, transformations=transformations, local_dict=local_dict)
+
+def to_eq(s, angle_unit='RAD'):
+    """
+    Parses a string that may contain '=' into a SymPy Eq object.
+    """
+    if not s or not str(s).strip(): 
+        raise ValueError("Empty input")
+        
+    s_clean = sanitize_expression(s)
+    if not s_clean.strip():
+        raise ValueError("Invalid input")
+
+    if '=' in s_clean:
+        parts = s_clean.split('=')
+        if len(parts) != 2 or not parts[0].strip() or not parts[1].strip():
+            raise ValueError("Invalid equation format")
+        lhs = safe_sympify(parts[0], angle_unit)
+        rhs = safe_sympify(parts[1], angle_unit)
+        if lhs is None or rhs is None:
+            raise ValueError("Could not parse equation sides")
+        return Eq(lhs, rhs)
+    else:
+        # Treat as expression = 0
+        expr = safe_sympify(s_clean, angle_unit)
+        if expr is None:
+            raise ValueError("Could not parse expression")
+        return Eq(expr, 0)
 
 def calculate_expression(expression, config={}, lang='en'):
     """
@@ -105,6 +139,9 @@ def calculate_expression(expression, config={}, lang='en'):
                 if 'e' in res_str.lower() or '*' in res_str:
                     res_str = str(result)
                 
+                # Replace * with × for clean display in math-field
+                res_str = res_str.replace('*', '×')
+                
                 return {'result': res_str, 'latex': latex(expr)}
             except:
                 pass
@@ -112,10 +149,12 @@ def calculate_expression(expression, config={}, lang='en'):
         # For non-numbers (expressions with variables), use simplify and string conversion
         res_str = str(result)
         # Final cleanup for any leftover multiplication stars in simple outputs
-        if res_str.replace('.', '').replace('-', '').isdigit():
-            # If it's a numeric string with maybe a dot or minus, we're good
+        res_str = res_str.replace('*', '×')
+        
+        if res_str.replace('.', '').replace('-', '').replace('×', '').isdigit():
+            # If it's a numeric string with maybe a dot, minus, or ×, we're good
             pass
-        elif '*' in res_str:
+        elif '×' in res_str:
              # Check if it's a numeric expression that didn't fully evaluate for some reason
              try:
                  # Try one last evalf if stars are present in what should be a number
@@ -867,18 +906,6 @@ def solve_linear_system_steps(eq1_str, eq2_str, lang='en'):
     
     try:
         # Parsing with '=' support
-        def to_eq(s):
-            s_clean = sanitize_expression(s)
-            if '=' in s_clean:
-                parts = s_clean.split('=')
-                if len(parts) != 2 or not parts[0].strip() or not parts[1].strip():
-                    raise ValueError("Invalid equation")
-                lhs = safe_sympify(parts[0])
-                rhs = safe_sympify(parts[1])
-                return Eq(lhs, rhs)
-            else:
-                return Eq(safe_sympify(s_clean), 0)
-        
         eq1 = to_eq(eq1_str)
         eq2 = to_eq(eq2_str)
 
@@ -984,8 +1011,8 @@ def solve_linear_system_steps(eq1_str, eq2_str, lang='en'):
                         y_expr = y_expr[0]
                         # Generate points
                         center_x = 0
-                        if isinstance(sol, dict) and x in sol:
-                            try: center_x = float(sol[x])
+                        if isinstance(sol, list) and len(sol) > 0 and x in sol[0]:
+                            try: center_x = float(sol[0][x])
                             except: pass
                         
                         x_vals = [center_x - 10, center_x + 10]
@@ -1019,11 +1046,12 @@ def solve_linear_system_steps(eq1_str, eq2_str, lang='en'):
                     pass
 
             # Intersection point
-            if isinstance(sol, dict):
+            if isinstance(sol, list) and len(sol) == 1:
+                sol_dict = sol[0]
                 try:
-                    pt = {'x': float(sol[x]), 'y': float(sol[y])}
+                    pt = {'x': float(sol_dict[x]), 'y': float(sol_dict[y])}
                     plot_data.append({
-                        'label': 'Intersection',
+                        'label': 'Intersection' if lang == 'en' else 'نقطة التقاطع',
                         'points': [pt],
                         'type': 'point',
                         'color': '#10b981'
@@ -1085,12 +1113,8 @@ def solve_mixed_system_steps(linear_str, quad_str, lang='en'):
     }
     t = phrases.get(lang, phrases['en'])
     try:
-        linear = safe_sympify(linear_str)
-        quad = safe_sympify(quad_str)
-        
-        # Assume linear is eq1, quad is eq2
-        if not isinstance(linear, Eq): linear = Eq(linear, 0)
-        if not isinstance(quad, Eq): quad = Eq(quad, 0)
+        linear = to_eq(linear_str)
+        quad = to_eq(quad_str)
         
         l_std = linear.lhs - linear.rhs
         q_std = quad.lhs - quad.rhs
@@ -1100,22 +1124,25 @@ def solve_mixed_system_steps(linear_str, quad_str, lang='en'):
         
         steps = [f"{t['system']}: ${latex(linear)}$ ({t['linear']})", f"${latex(quad)}$ ({t['quadratic']})"]
         
-        solutions = solve((l_std, q_std), syms)
+        # Use dict=True for consistent solution format
+        solutions = solve((l_std, q_std), syms, dict=True)
         
         steps.append(t['solve_sub'])
         
         sol_strs = []
-        for s in solutions:
-            if isinstance(s, tuple):
-                 parts = [f"{latex(syms[i])} = {latex(val)}" for i, val in enumerate(s)]
-                 sol_strs.append("(" + ", ".join(parts) + ")")
-            elif isinstance(s, dict): # handle dict return from solve
-                 parts = [f"{latex(sym)} = {latex(val)}" for sym, val in s.items()]
-                 sol_strs.append("(" + ", ".join(parts) + ")")
-            
+        if not solutions:
+            no_sol = "No real solutions" if lang == 'en' else "لا توجد حلول حقيقية"
+            sol_strs.append(no_sol)
+        else:
+            for s in solutions:
+                if isinstance(s, dict):
+                     parts = [f"{latex(sym)} = {latex(val)}" for sym, val in s.items()]
+                     sol_strs.append("(" + ", ".join(parts) + ")")
+        
         steps.append(f"{t['solutions']}: ${', '.join(sol_strs)}$")
         
-        return {'latex': f"\\{{{', '.join(sol_strs)}\\}}", 'steps': steps}
+        result_latex = f"\\{{{', '.join(sol_strs)}\\}}" if solutions else "\\phi"
+        return {'latex': result_latex, 'steps': steps}
     except Exception as e:
         return {'error': str(e)}
 
