@@ -48,6 +48,7 @@ def sanitize_expression(expr_str):
     expr_str = expr_str.replace('÷', '/')
     expr_str = expr_str.replace('×', '*')
     expr_str = expr_str.replace('·', '*') # Middle dot multiplication
+    expr_str = expr_str.replace('∗', '*') # Asterisk operator (U+2217)
     
     # Replace dot with spaces around it as multiplication (e.g., '5 . 5')
     # but don't touch decimal points like '5.5'
@@ -89,16 +90,42 @@ def calculate_expression(expression, config={}, lang='en'):
         # Clean up result formatting
         if result.is_number:
             try:
+                # Use sympy's evalf for initial check but handle precision carefully
+                if result.is_Integer:
+                    return {'result': str(result), 'latex': latex(expr)}
+                
                 f_val = float(result)
                 if f_val.is_integer():
                     res_str = str(int(f_val))
                 else:
+                    # Remove trailing zeros and avoid scientific notation for small/large numbers
                     res_str = f"{f_val:g}"
+                
+                # Double check for scientific notation or artifacts
+                if 'e' in res_str.lower() or '*' in res_str:
+                    res_str = str(result)
+                
                 return {'result': res_str, 'latex': latex(expr)}
             except:
                 pass
                 
-        return {'result': str(result), 'latex': latex(expr)}
+        # For non-numbers (expressions with variables), use simplify and string conversion
+        res_str = str(result)
+        # Final cleanup for any leftover multiplication stars in simple outputs
+        if res_str.replace('.', '').replace('-', '').isdigit():
+            # If it's a numeric string with maybe a dot or minus, we're good
+            pass
+        elif '*' in res_str:
+             # Check if it's a numeric expression that didn't fully evaluate for some reason
+             try:
+                 # Try one last evalf if stars are present in what should be a number
+                 eval_res = result.evalf(chop=True)
+                 if eval_res.is_number:
+                     res_str = f"{float(eval_res):g}"
+             except:
+                 pass
+
+        return {'result': res_str, 'latex': latex(expr)}
     except Exception as e:
         return {'error': str(e)}
 
