@@ -71,8 +71,8 @@
                             id="equation-input" 
                             class="w-full text-2xl sm:text-3xl font-bold text-gray-800 bg-gray-50 rounded-xl border-2 border-gray-200 focus:border-indigo-500 focus:outline-none focus:ring-0 p-4 transition-all shadow-inner"
                             virtual-keyboard-mode="onfocus"
-                            placeholder="x^2 - 5x + 6 = 0"
-                        >x^2 - 5x + 6 = 0</math-field>
+                            placeholder=""
+                        ></math-field>
                     </div>
                 </div>
 
@@ -266,33 +266,55 @@
             document.getElementById('input-single').classList.remove('hidden');
             document.getElementById('lbl-single').innerText = '{% if request.session.lang == "ar" %}اكتب المعادلة أو المتباينة{% else %}Enter Equation or Inequality{% endif %}';
             document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}حل المشكلة{% else %}Solve{% endif %}';
+            if (mf) { 
+                mf.placeholder = "x^2 - 5x + 6 = 0";
+                mf.setValue('x^2 - 5x + 6 = 0');
+            }
         } else if (mode === 'quadratic') {
             document.getElementById('tab-quadratic').className = tabClassActive;
             document.getElementById('input-single').classList.remove('hidden');
             document.getElementById('lbl-single').innerText = '{% if request.session.lang == "ar" %}اكتب المعادلة التربيعية{% else %}Enter Quadratic Equation{% endif %}';
             document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}حل المعادلة{% else %}Solve{% endif %}';
+            if (mf) {
+                mf.placeholder = "ax^2 + bx + c = 0";
+                mf.setValue('x^2 - 5x + 6 = 0');
+            }
         } else if (mode === 'simplify') {
             document.getElementById('tab-simplify').className = tabClassActive;
             document.getElementById('input-single').classList.remove('hidden');
             document.getElementById('lbl-single').innerText = '{% if request.session.lang == "ar" %}اكتب المقدار الأسي{% else %}Enter Exponential Expression{% endif %}';
             document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}تبسيط{% else %}Simplify{% endif %}';
+            if (mf) {
+                mf.placeholder = "2^3 * 2^4";
+                mf.setValue('2^3 * 2^4');
+            }
         } else if (mode === 'scientific') {
             document.getElementById('tab-scientific').className = tabClassActive;
             document.getElementById('input-single').classList.remove('hidden');
             document.getElementById('lbl-single').innerText = '{% if request.session.lang == "ar" %}اكتب الرقم أو الصيغة العلمية{% else %}Enter Number or Scientific Notation{% endif %}';
             document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}تحويل{% else %}Convert{% endif %}';
-            if (mf) { mf.setValue('0.0005'); }
+            if (mf) { 
+                mf.placeholder = "0.0005";
+                mf.setValue('0.0005'); 
+            }
         } else if (mode === 'factorize') {
             document.getElementById('tab-factorize').className = tabClassActive;
             document.getElementById('input-single').classList.remove('hidden');
             document.getElementById('lbl-single').innerText = '{% if request.session.lang == "ar" %}اكتب المقدار المراد تحليله{% else %}Enter Expression to Factorize{% endif %}';
             document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}تحليل{% else %}Factorize{% endif %}';
-            if (mf) { mf.setValue('x^2 - 5x + 6'); }
+            if (mf) {
+                mf.placeholder = "x^2 - 5x + 6";
+                mf.setValue('x^2 - 5x + 6');
+            }
         } else if (mode === 'expand') {
             document.getElementById('tab-expand').className = tabClassActive;
             document.getElementById('input-single').classList.remove('hidden');
             document.getElementById('lbl-single').innerText = '{% if request.session.lang == "ar" %}اكتب المقدار هنا{% else %}Enter Expression{% endif %}';
             document.getElementById('btn-text').innerText = '{% if request.session.lang == "ar" %}فك الأقواس{% else %}Expand{% endif %}';
+            if (mf) {
+                mf.placeholder = "(x + 2)(x - 3)";
+                mf.setValue('(x + 2)(x - 3)');
+            }
         } else if (mode === 'divide') {
             document.getElementById('tab-divide').className = tabClassActive;
             document.getElementById('input-double').classList.remove('hidden');
